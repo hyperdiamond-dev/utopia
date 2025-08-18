@@ -2,6 +2,9 @@
 import { cert, getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 
+// Suppress Node-specific warnings
+Deno.env.set("GOOGLE_SDK_NODE_LOGGING", "false")
+
 // Initialize Firebase Admin SDK
 const firebaseConfig = {
   credential: cert({
