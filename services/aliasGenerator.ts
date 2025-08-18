@@ -1,8 +1,8 @@
 // src/services/aliasGenerator.ts
-import { adjectives, animals, uniqueNamesGenerator } from 'unique-names-generator'
+import { adjectives, animals, Config, uniqueNamesGenerator } from 'unique-names-generator'
 
 export class AliasGenerator {
-  private static readonly config = {
+  private static readonly config: Config = {
     dictionaries: [adjectives, animals],
     separator: '',
     style: 'capital',

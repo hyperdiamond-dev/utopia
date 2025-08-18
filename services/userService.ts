@@ -33,13 +33,15 @@ export class UserService {
     // Create UUID-based identifier
     const uuid = `user_${uuidv4()}`
     
-    // Create Firebase user with custom claims
+    // Create Firebase user
     const firebaseUser = await auth.createUser({
       uid: uuid,
-      customClaims: {
-        isAnonymous: true,
-        friendlyAlias,
-      },
+    })
+
+    // Set custom claims for the user
+    await auth.setCustomUserClaims(firebaseUser.uid, {
+      isAnonymous: true,
+      friendlyAlias,
     })
     
     // Hash password for storage
@@ -75,7 +77,7 @@ export class UserService {
     return isValid ? user : null
   }
   
-  private static async aliasExists(alias: string): Promise<boolean> {
+  private static aliasExists(alias: string): boolean {
     return this.users.has(alias)
   }
 }
