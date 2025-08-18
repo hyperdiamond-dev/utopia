@@ -1,0 +1,35 @@
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+logs/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Deno cache (if using --cache-dir)
+.deno_cache/
+
+# Build outputs (if any)
+dist/
+build/
+
+# Node
+node_modules/
+npm-debug.log*
+package-lock.json

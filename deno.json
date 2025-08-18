@@ -1,0 +1,22 @@
+{
+  "imports": {
+    "@std/dotenv": "jsr:@std/dotenv@^0.225.5",
+    "hono": "jsr:@hono/hono@^4.8.12",
+    "@hono/node-server": "npm:@hono/node-server@^1.13.1",
+    "firebase-admin": "npm:firebase-admin@^13.0.1",
+    "unique-names-generator": "npm:unique-names-generator@^4.7.1",
+    "generate-password": "npm:generate-password@^1.7.1",
+    "bcryptjs": "npm:bcryptjs@^2.4.3",
+    "jsonwebtoken": "npm:jsonwebtoken@^9.0.2",
+    "zod": "npm:zod@^3.24.1",
+    "uuid": "npm:uuid@^10.0.0"
+  },
+  "tasks": {
+    "start": "deno run --allow-net --allow-read --allow-write --allow-env main.ts"
+  },
+  "compilerOptions": {
+    "jsx": "precompile",
+    "jsxImportSource": "hono/jsx"
+  },
+  "nodeModulesDir":"auto"
+}
