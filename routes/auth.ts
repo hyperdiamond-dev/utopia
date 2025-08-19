@@ -39,7 +39,11 @@ auth.post('/login', async (c) => {
     if (!user) {
       return c.json({ error: 'Invalid credentials' }, 401)
     }
-    
+    const jwtSecret = Deno.env.get('JWT_SECRET')
+    if (!jwtSecret) {
+      console.error('JWT_SECRET not configured')
+      return c.json({ error: 'Server configuration error' }, 500)
+    }
     // Create JWT token
     const token = jwt.sign(
       {
@@ -60,7 +64,7 @@ auth.post('/login', async (c) => {
       },
     })
   } catch (error) {
-    return c.json({ error: 'Login failed' }, 400)
+    return c.json({ error: 'Authentication failed' }, 400)
   }
 })
 
