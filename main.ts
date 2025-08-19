@@ -4,7 +4,9 @@ import "@std/dotenv/load"
 import { Env, Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
+import { secureHeaders } from "hono/secure-headers"
 import { authMiddleware } from './middleware/auth.ts'
+import { globalRateLimit } from './middleware/rateLimit.ts'
 import { auth } from './routes/auth.ts'
 
 interface AppContext extends Env {
@@ -16,6 +18,9 @@ interface AppContext extends Env {
 const app = new Hono<AppContext>()
 
 // Global middleware
+app.use('*', secureHeaders())
+// @ts-ignore - TypeScript compatibility issue with hono-rate-limiter
+app.use('*', globalRateLimit) // Apply global rate limiting
 app.use('*', logger())
 app.use('*', cors({
   origin: ['http://localhost:3000', 'http://localhost:5173'],

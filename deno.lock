@@ -8,6 +8,7 @@
     "npm:bcryptjs@^2.4.3": "2.4.3",
     "npm:firebase-admin@^13.0.1": "13.4.0",
     "npm:generate-password@^1.7.1": "1.7.1",
+    "npm:hono-rate-limiter@0.4": "0.4.2_hono@4.9.2",
     "npm:jsonwebtoken@^9.0.2": "9.0.2",
     "npm:unique-names-generator@^4.7.1": "4.7.1",
     "npm:uuid@10": "10.0.0",
@@ -597,6 +598,12 @@
         "function-bind"
       ]
     },
+    "hono-rate-limiter@0.4.2_hono@4.9.2": {
+      "integrity": "sha512-AAtFqgADyrmbDijcRTT/HJfwqfvhalya2Zo+MgfdrMPas3zSMD8SU03cv+ZsYwRU1swv7zgVt0shwN059yzhjw==",
+      "dependencies": [
+        "hono"
+      ]
+    },
     "hono@4.9.2": {
       "integrity": "sha512-UG2jXGS/gkLH42l/1uROnwXpkjvvxkl3kpopL3LBo27NuaDPI6xHNfuUSilIHcrBkPfl4y0z6y2ByI455TjNRw=="
     },
@@ -988,6 +995,7 @@
       "npm:bcryptjs@^2.4.3",
       "npm:firebase-admin@^13.0.1",
       "npm:generate-password@^1.7.1",
+      "npm:hono-rate-limiter@0.4",
       "npm:jsonwebtoken@^9.0.2",
       "npm:unique-names-generator@^4.7.1",
       "npm:uuid@10",
