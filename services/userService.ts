@@ -15,7 +15,6 @@ export interface AnonymousUser {
 }
 
 export class UserService {
-  private static users = new Map<string, AnonymousUser>() // In-memory store for demo
   
   static async createAnonymousUser(): Promise<{
     friendlyAlias: string
@@ -33,31 +32,24 @@ export class UserService {
     // Create UUID-based identifier
     const uuid = `user_${uuidv4()}`
     
-    // Create Firebase user
-    const firebaseUser = await auth.createUser({
-      uid: uuid,
-    })
-
-    // Set custom claims for the user
-    await auth.setCustomUserClaims(firebaseUser.uid, {
-      isAnonymous: true,
-      friendlyAlias,
-    })
-    
     // Hash password for storage
     const hashedPassword = await bcrypt.hash(password, 12)
     
-    // Store user data
-    const user: AnonymousUser = {
-      uuid,
+    // Create Firebase user with custom claims
+    const firebaseUser = await auth.createUser({
+      uid: uuid,
+      disabled: false,
+    })
+
+    // Set custom claims for the user (includes hashed password and metadata)
+    await auth.setCustomUserClaims(firebaseUser.uid, {
+      isAnonymous: true,
       friendlyAlias,
-      firebaseUid: firebaseUser.uid,
-      password: hashedPassword,
-      createdAt: new Date(),
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-    }
+      password: hashedPassword, // Store hashed password in custom claims
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+    })
     
-    this.users.set(friendlyAlias, user)
     return {
       friendlyAlias,
       password, // Return plain password for user
@@ -69,19 +61,64 @@ export class UserService {
     friendlyAlias: string, 
     password: string
   ): Promise<AnonymousUser | null> {
-    const user = this.users.get(friendlyAlias)
-    if (!user) return null
-    
     try {
-      const isValid = await bcrypt.compare(password, user.password)
-      return isValid ? user : null
+      // Find user by custom claims (search through Firebase users)
+      const listUsersResult = await auth.listUsers(1000) // Get up to 1000 users
+      
+      // Find user with matching friendlyAlias in custom claims
+      const userRecord = listUsersResult.users.find(user => {
+        const customClaims = user.customClaims
+        return customClaims && customClaims.friendlyAlias === friendlyAlias
+      })
+      
+      if (!userRecord || !userRecord.customClaims) {
+        return null
+      }
+      
+      const claims = userRecord.customClaims
+      
+      // Check if account has expired
+      if (claims.expiresAt && new Date(claims.expiresAt) < new Date()) {
+        // Disable expired user
+        await auth.updateUser(userRecord.uid, { disabled: true })
+        return null
+      }
+      
+      // Compare password with stored hash
+      const isValid = await bcrypt.compare(password, claims.password)
+      
+      if (!isValid) {
+        return null
+      }
+      
+      // Return user data
+      return {
+        uuid: userRecord.uid,
+        friendlyAlias: claims.friendlyAlias,
+        firebaseUid: userRecord.uid,
+        password: claims.password, // hashed password
+        createdAt: new Date(claims.createdAt),
+        expiresAt: new Date(claims.expiresAt),
+      }
+      
     } catch (error) {
-      console.error('Error during bcrypt.compare:', error)
+      console.error('Error during authentication:', error)
       return null
     }
   }
   
-  private static aliasExists(alias: string): boolean {
-    return this.users.has(alias)
+  private static async aliasExists(alias: string): Promise<boolean> {
+    try {
+      // Check if alias exists in Firebase custom claims
+      const listUsersResult = await auth.listUsers(1000)
+      
+      return listUsersResult.users.some(user => {
+        const customClaims = user.customClaims
+        return customClaims && customClaims.friendlyAlias === alias
+      })
+    } catch (error) {
+      console.error('Error checking alias existence:', error)
+      return false
+    }
   }
 }
