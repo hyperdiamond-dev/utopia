@@ -58,7 +58,6 @@ export class UserService {
     }
     
     this.users.set(friendlyAlias, user)
-    
     return {
       friendlyAlias,
       password, // Return plain password for user
@@ -73,8 +72,13 @@ export class UserService {
     const user = this.users.get(friendlyAlias)
     if (!user) return null
     
-    const isValid = await bcrypt.compare(password, user.password)
-    return isValid ? user : null
+    try {
+      const isValid = await bcrypt.compare(password, user.password)
+      return isValid ? user : null
+    } catch (error) {
+      console.error('Error during bcrypt.compare:', error)
+      return null
+    }
   }
   
   private static aliasExists(alias: string): boolean {
