@@ -23,7 +23,7 @@ app.use('*', secureHeaders())
 app.use('*', globalRateLimit) // Apply global rate limiting
 app.use('*', logger())
 app.use('*', cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173'],
+  origin: Deno.env.get('ALLOWED_ORIGINS')?.split(',') || ['http://localhost:3000'],
   credentials: true,
 }))
 
