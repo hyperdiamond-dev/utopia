@@ -1,5 +1,6 @@
 {
   "imports": {
+    "@neon/serverless": "jsr:@neon/serverless@^1.0.1",
     "@std/dotenv": "jsr:@std/dotenv@^0.225.5",
     "hono": "jsr:@hono/hono@^4.8.12",
     "@hono/node-server": "npm:@hono/node-server@^1.13.1",
