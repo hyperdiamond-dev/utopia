@@ -2,6 +2,7 @@
 import bcrypt from 'bcryptjs'
 import { v4 as uuidv4 } from 'uuid'
 import { auth } from '../config/firebase.ts'
+import { userRepository } from "../db/index.ts"
 import { AliasGenerator } from './aliasGenerator.ts'
 import { PasswordGenerator } from './passwordGenerator.ts'
 
@@ -49,7 +50,9 @@ export class UserService {
       createdAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
     })
-    
+
+    await userRepository.createUser(friendlyAlias, uuid, 'ACTIVE');
+
     return {
       friendlyAlias,
       password, // Return plain password for user

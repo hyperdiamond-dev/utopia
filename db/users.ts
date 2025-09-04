@@ -13,10 +13,10 @@ export interface User {
 }
 
 export class UserRepository {
-  async createUser(alias: string, status: UserStatus = 'ACTIVE'): Promise<User> {
+  async createUser(alias: string, uuid: string, status: UserStatus = 'ACTIVE'): Promise<User> {
     const result = await sql`
-      INSERT INTO users (alias, status, created_at)
-      VALUES (${alias}, ${status}, NOW())
+      INSERT INTO users (alias, uuid, status, created_at)
+      VALUES (${alias}, ${uuid}, ${status}, NOW())
       RETURNING *
     `;
     return result[0] as User;
