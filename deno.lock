@@ -4,6 +4,8 @@
     "jsr:@hono/hono@^4.8.12": "4.8.12",
     "jsr:@neon/serverless@^1.0.1": "1.0.1",
     "jsr:@std/dotenv@~0.225.5": "0.225.5",
+    "jsr:@std/internal@^1.0.10": "1.0.10",
+    "jsr:@std/path@^1.1.2": "1.1.2",
     "npm:@hono/node-server@^1.13.1": "1.19.0_hono@4.9.2",
     "npm:@types/node@*": "22.15.15",
     "npm:bcryptjs@^2.4.3": "2.4.3",
@@ -24,6 +26,15 @@
     },
     "@std/dotenv@0.225.5": {
       "integrity": "9ce6f9d0ec3311f74a32535aa1b8c62ed88b1ab91b7f0815797d77a6f60c922f"
+    },
+    "@std/internal@1.0.10": {
+      "integrity": "e3be62ce42cab0e177c27698e5d9800122f67b766a0bea6ca4867886cbde8cf7"
+    },
+    "@std/path@1.1.2": {
+      "integrity": "c0b13b97dfe06546d5e16bf3966b1cadf92e1cc83e56ba5476ad8b498d9e3038",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
     }
   },
   "npm": {
@@ -996,6 +1007,7 @@
       "jsr:@hono/hono@^4.8.12",
       "jsr:@neon/serverless@^1.0.1",
       "jsr:@std/dotenv@~0.225.5",
+      "jsr:@std/path@^1.1.2",
       "npm:@hono/node-server@^1.13.1",
       "npm:bcryptjs@^2.4.3",
       "npm:firebase-admin@^13.0.1",
