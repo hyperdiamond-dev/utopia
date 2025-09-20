@@ -5,6 +5,7 @@ import { auth } from '../config/firebase.ts'
 import { userRepository } from "../db/index.ts"
 import { AliasGenerator } from './aliasGenerator.ts'
 import { PasswordGenerator } from './passwordGenerator.ts'
+import { ModuleService } from './moduleService.ts'
 
 export interface AnonymousUser {
   uuid: string
@@ -51,7 +52,15 @@ export class UserService {
       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
     })
 
-    await userRepository.createUser(friendlyAlias, uuid, 'ACTIVE');
+    const dbUser = await userRepository.createUser(friendlyAlias, uuid, 'ACTIVE');
+
+    // Initialize user's module progress (starts with consent)
+    try {
+      await ModuleService.initializeUserModules(dbUser.id);
+    } catch (error) {
+      console.error('Failed to initialize user modules:', error);
+      // Continue without failing user creation
+    }
 
     return {
       friendlyAlias,

@@ -2,9 +2,10 @@ openapi: 3.1.0
 info:
   title: Utopia Anonymous User API
   description: |
-    A secure API for creating and managing anonymous user accounts with temporary credentials.
-    Built with Hono framework and Firebase Admin SDK.``
-  version: 1.0.0
+    A secure API for creating and managing anonymous user accounts with temporary credentials and
+    sequential module progression for the Backrooms ethnography study.
+    Built with Hono framework and Firebase Admin SDK.
+  version: 1.1.0
   contact:
     name: API Support
     email: support@utopia.dev
@@ -116,6 +117,297 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Forbidden - token expired or invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/modules/list:
+    get:
+      summary: Get all available modules
+      description: Returns a list of all module definitions without user-specific data (public endpoint)
+      tags:
+        - Modules
+      responses:
+        '200':
+          description: Module list retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModuleListResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/modules:
+    get:
+      summary: Get user's module overview
+      description: Returns all modules with progress and accessibility information
+      tags:
+        - Modules
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Module overview retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModuleOverviewResponse'
+        '401':
+          description: Unauthorized - invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/modules/current:
+    get:
+      summary: Get user's current module
+      description: Returns the module the user should currently be working on
+      tags:
+        - Modules
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current module retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentModuleResponse'
+        '401':
+          description: Unauthorized - invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/modules/{moduleName}:
+    get:
+      summary: Get specific module data
+      description: Returns module information with user progress and accessibility
+      tags:
+        - Modules
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleName
+          in: path
+          schema:
+            type: string
+            enum: [consent, module1, module2, module3, module4]
+          description: Name of the module to retrieve
+      responses:
+        '200':
+          description: Module data retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModuleDataResponse'
+        '401':
+          description: Unauthorized - invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Module access denied - complete previous modules first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModuleAccessDeniedResponse'
+        '404':
+          description: Module not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/modules/{moduleName}/start:
+    post:
+      summary: Start a module
+      description: Marks a module as in progress for the user
+      tags:
+        - Modules
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleName
+          in: path
+          schema:
+            type: string
+            enum: [consent, module1, module2, module3, module4]
+          description: Name of the module to start
+      responses:
+        '200':
+          description: Module started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModuleStartResponse'
+        '401':
+          description: Unauthorized - invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Module access denied - complete previous modules first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModuleAccessDeniedResponse'
+
+  /api/modules/{moduleName}/save:
+    post:
+      summary: Save partial module progress
+      description: Saves response data without completing the module
+      tags:
+        - Modules
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleName
+          in: path
+          schema:
+            type: string
+            enum: [consent, module1, module2, module3, module4]
+          description: Name of the module to save progress for
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModuleSaveRequest'
+      responses:
+        '200':
+          description: Progress saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModuleSaveResponse'
+        '400':
+          description: Bad request - invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Module access denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModuleAccessDeniedResponse'
+
+  /api/modules/{moduleName}/complete:
+    post:
+      summary: Complete a module
+      description: Marks a module as completed and unlocks the next module
+      tags:
+        - Modules
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleName
+          in: path
+          schema:
+            type: string
+            enum: [consent, module1, module2, module3, module4]
+          description: Name of the module to complete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModuleCompleteRequest'
+      responses:
+        '200':
+          description: Module completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModuleCompleteResponse'
+        '400':
+          description: Bad request - invalid submission data or module already completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Module access denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModuleAccessDeniedResponse'
+
+  /api/modules/{moduleName}/responses:
+    get:
+      summary: Get module responses (read-only)
+      description: Returns saved responses for completed or accessible modules
+      tags:
+        - Modules
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleName
+          in: path
+          schema:
+            type: string
+            enum: [consent, module1, module2, module3, module4]
+          description: Name of the module to get responses for
+      responses:
+        '200':
+          description: Module responses retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModuleResponsesResponse'
+        '401':
+          description: Unauthorized - invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Module access denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModuleAccessDeniedResponse'
+
+  /api/modules/progress/stats:
+    get:
+      summary: Get detailed progress statistics
+      description: Returns comprehensive progress information and navigation state
+      tags:
+        - Modules
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Progress statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressStatsResponse'
+        '401':
+          description: Unauthorized - invalid or missing token
           content:
             application/json:
               schema:
@@ -281,6 +573,350 @@ components:
           description: Account expiration timestamp (30 days from creation)
           example: "2025-09-16T10:30:00Z"
 
+    # Module System Schemas
+    Module:
+      type: object
+      required:
+        - name
+        - title
+        - sequence_order
+      properties:
+        name:
+          type: string
+          description: Unique module identifier
+          example: "consent"
+        title:
+          type: string
+          description: Human-readable module title
+          example: "Consent and Onboarding"
+        description:
+          type: string
+          description: Module description
+          example: "Participant consent and study introduction"
+        sequence_order:
+          type: integer
+          description: Order in which modules must be completed
+          example: 1
+
+    ModuleProgress:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [NOT_STARTED, IN_PROGRESS, COMPLETED]
+          description: Current progress status
+          example: "IN_PROGRESS"
+        started_at:
+          type: string
+          format: date-time
+          description: When the module was started
+          example: "2025-08-17T10:30:00Z"
+        completed_at:
+          type: string
+          format: date-time
+          description: When the module was completed
+          example: "2025-08-17T11:30:00Z"
+        response_data:
+          type: object
+          description: Saved response data
+          additionalProperties: true
+
+    ModuleWithProgress:
+      allOf:
+        - $ref: '#/components/schemas/Module'
+        - type: object
+          properties:
+            user_progress:
+              $ref: '#/components/schemas/ModuleProgress'
+            accessible:
+              type: boolean
+              description: Whether the user can access this module
+              example: true
+
+    NavigationState:
+      type: object
+      properties:
+        currentModule:
+          $ref: '#/components/schemas/Module'
+        completedModules:
+          type: array
+          items:
+            type: string
+          description: Names of completed modules
+          example: ["consent", "module1"]
+        availableModules:
+          type: array
+          items:
+            type: string
+          description: Names of accessible modules
+          example: ["consent", "module1", "module2"]
+        nextModule:
+          $ref: '#/components/schemas/Module'
+        progressPercentage:
+          type: integer
+          description: Overall completion percentage
+          example: 40
+
+    # Request/Response Schemas
+    ModuleListResponse:
+      type: object
+      required:
+        - modules
+      properties:
+        modules:
+          type: array
+          items:
+            $ref: '#/components/schemas/Module'
+          description: List of all available modules
+
+    ModuleSaveRequest:
+      type: object
+      required:
+        - responses
+      properties:
+        responses:
+          type: object
+          description: User responses to save
+          additionalProperties: true
+          example:
+            question1: "Sample answer"
+            question2: 42
+
+    ModuleCompleteRequest:
+      type: object
+      required:
+        - responses
+      properties:
+        responses:
+          type: object
+          description: Final user responses
+          additionalProperties: true
+          example:
+            question1: "Final answer"
+            question2: 42
+            question3: ["option1", "option2"]
+        metadata:
+          type: object
+          description: Additional metadata
+          additionalProperties: true
+          example:
+            completion_time_minutes: 15
+            browser: "Chrome"
+
+    ModuleOverviewResponse:
+      type: object
+      required:
+        - modules
+        - navigation
+        - progress
+      properties:
+        modules:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModuleWithProgress'
+        navigation:
+          $ref: '#/components/schemas/NavigationState'
+        progress:
+          type: object
+          properties:
+            total_modules:
+              type: integer
+              example: 5
+            completed_modules:
+              type: integer
+              example: 2
+            completion_percentage:
+              type: integer
+              example: 40
+
+    CurrentModuleResponse:
+      type: object
+      properties:
+        current_module:
+          $ref: '#/components/schemas/Module'
+        progress:
+          $ref: '#/components/schemas/ModuleProgress'
+        accessible:
+          type: boolean
+          example: true
+        is_completed:
+          type: boolean
+          example: false
+        message:
+          type: string
+          description: Status message
+          example: "Continue with Module 2"
+
+    ModuleDataResponse:
+      type: object
+      required:
+        - module
+        - progress
+        - accessible
+        - is_completed
+        - can_review
+      properties:
+        module:
+          $ref: '#/components/schemas/Module'
+        progress:
+          $ref: '#/components/schemas/ModuleProgress'
+        accessible:
+          type: boolean
+          example: true
+        is_completed:
+          type: boolean
+          example: false
+        can_review:
+          type: boolean
+          description: Whether user can review this module
+          example: false
+
+    ModuleStartResponse:
+      type: object
+      required:
+        - message
+        - progress
+      properties:
+        message:
+          type: string
+          example: "Module started successfully"
+        progress:
+          type: object
+          properties:
+            status:
+              type: string
+              example: "IN_PROGRESS"
+            started_at:
+              type: string
+              format: date-time
+              example: "2025-08-17T10:30:00Z"
+            module_id:
+              type: integer
+              example: 2
+
+    ModuleSaveResponse:
+      type: object
+      required:
+        - message
+        - saved_at
+        - response_count
+      properties:
+        message:
+          type: string
+          example: "Progress saved successfully"
+        saved_at:
+          type: string
+          format: date-time
+          example: "2025-08-17T10:35:00Z"
+        response_count:
+          type: integer
+          description: Number of responses saved
+          example: 3
+
+    ModuleCompleteResponse:
+      type: object
+      required:
+        - message
+        - completed_at
+        - progress_stats
+      properties:
+        message:
+          type: string
+          example: "Module completed successfully"
+        completed_at:
+          type: string
+          format: date-time
+          example: "2025-08-17T11:30:00Z"
+        next_module:
+          $ref: '#/components/schemas/Module'
+        progress_stats:
+          type: object
+          properties:
+            total_modules:
+              type: integer
+              example: 5
+            completed_modules:
+              type: integer
+              example: 3
+            completion_percentage:
+              type: integer
+              example: 60
+
+    ModuleResponsesResponse:
+      type: object
+      required:
+        - module_name
+        - readonly
+      properties:
+        module_name:
+          type: string
+          example: "module1"
+        responses:
+          type: object
+          description: User's saved responses
+          additionalProperties: true
+          example:
+            question1: "Answer to question 1"
+            question2: 42
+        completed_at:
+          type: string
+          format: date-time
+          example: "2025-08-17T11:30:00Z"
+        readonly:
+          type: boolean
+          description: Whether responses can be modified
+          example: true
+        message:
+          type: string
+          description: Status message when no responses found
+          example: "No responses found for this module"
+
+    ProgressStatsResponse:
+      type: object
+      required:
+        - total_modules
+        - completed_modules
+        - completion_percentage
+        - navigation
+      properties:
+        total_modules:
+          type: integer
+          example: 5
+        completed_modules:
+          type: integer
+          example: 2
+        current_module:
+          type: string
+          example: "module2"
+        completion_percentage:
+          type: integer
+          example: 40
+        navigation:
+          $ref: '#/components/schemas/NavigationState'
+
+    ModuleAccessDeniedResponse:
+      type: object
+      required:
+        - error
+        - reason
+      properties:
+        error:
+          type: string
+          example: "Module access denied"
+        reason:
+          type: string
+          example: "Complete previous modules first"
+        next_module:
+          type: string
+          description: Name of the module that should be completed next
+          example: "module1"
+        message:
+          type: string
+          description: Human-readable message
+          example: "Please complete \"Module 1: Initial Survey\" first"
+
 tags:
   - name: System
     description: System health and status endpoints
@@ -288,7 +924,8 @@ tags:
     description: User authentication and account creation
   - name: User
     description: User profile and account management
+  - name: Modules
+    description: Sequential module progression and management
 
 security:
   - {}  # Most endpoints are public
-  - bearerAuth: []  # Protected endpoints require JWT

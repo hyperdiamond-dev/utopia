@@ -8,6 +8,7 @@ import { secureHeaders } from "hono/secure-headers"
 import { authMiddleware } from './middleware/auth.ts'
 import { globalRateLimit } from './middleware/rateLimit.ts'
 import { auth } from './routes/auth.ts'
+import { modules } from './routes/modules.ts'
 
 interface AppContext extends Env {
   Variables: {
@@ -29,6 +30,9 @@ app.use('*', cors({
 
 // Auth routes (public)
 app.route('/api/auth', auth)
+
+// Module routes (protected)
+app.route('/api/modules', modules)
 
 // Protected routes example
 app.get('/api/profile', authMiddleware, (c) => {
