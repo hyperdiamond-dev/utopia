@@ -106,7 +106,7 @@ export class AuditRepository {
     `;
 
     const stats = totalResult[0] as { total_events: number; unique_users: number };
-    const eventsByType = eventTypeResult.reduce((acc: Record<EventType, number>, row: { event_type: EventType; count: number }) => {
+    const eventsByType = (eventTypeResult as { event_type: EventType; count: number }[]).reduce((acc: Record<EventType, number>, row) => {
       acc[row.event_type] = row.count;
       return acc;
     }, {} as Record<EventType, number>);
@@ -137,7 +137,7 @@ export class AuditRepository {
       WHERE timestamp < ${cutoffDate.toISOString()}
     `;
     
-    return result.count;
+    return (result as unknown as { count: number }).count;
   }
 
   // Helper methods for common audit logging

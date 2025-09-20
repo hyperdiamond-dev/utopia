@@ -17,7 +17,7 @@ export class ModuleService {
    * Get all modules with user progress and accessibility information
    */
   static async getUserModuleOverview(userId: number): Promise<ModuleWithProgress[]> {
-    return moduleRepository.getModulesWithProgress(userId);
+    return await moduleRepository.getModulesWithProgress(userId);
   }
 
   /**
@@ -65,7 +65,7 @@ export class ModuleService {
     const progress = await moduleRepository.startModule(userId, module.id);
 
     // Log audit event
-    await auditRepository.logEvent('MODULE_START', userId, {
+    await auditRepository.logModuleStart(userId, {
       module_id: module.id,
       module_name: moduleName,
       sequence_order: module.sequence_order
@@ -107,7 +107,7 @@ export class ModuleService {
     );
 
     // Log completion event
-    await auditRepository.logEvent('MODULE_COMPLETION', userId, {
+    await auditRepository.logModuleCompletion(userId, {
       module_id: module.id,
       module_name: moduleName,
       sequence_order: module.sequence_order,
@@ -163,14 +163,14 @@ export class ModuleService {
    * Get user's current module (what they should be working on)
    */
   static async getCurrentModule(userId: number): Promise<Module | null> {
-    return moduleRepository.getCurrentModule(userId);
+    return await moduleRepository.getCurrentModule(userId);
   }
 
   /**
    * Get user's completion statistics
    */
   static async getUserProgress(userId: number) {
-    return moduleRepository.getUserCompletionStats(userId);
+    return await moduleRepository.getUserCompletionStats(userId);
   }
 
   /**
@@ -222,7 +222,7 @@ export class ModuleService {
   static async logAccessDenied(userId: number, moduleName: string, reason: string): Promise<void> {
     const module = await moduleRepository.getModuleByName(moduleName);
 
-    await auditRepository.logEvent('MODULE_ACCESS_DENIED', userId, {
+    await auditRepository.createAudit('MODULE_START', userId, {
       module_id: module?.id,
       module_name: moduleName,
       reason,

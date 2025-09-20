@@ -50,14 +50,13 @@ export class UserRepository {
     if (entries.length === 0) return null;
 
     const setClause = entries.map(([key], index) => `${key} = $${index + 2}`).join(', ');
-    const values = entries.map(([_, value]) => value);
 
     const result = await sql`
       UPDATE users 
       SET ${sql.unsafe(setClause)}
       WHERE id = ${id}
       RETURNING *
-    `.values(id, ...values);
+    `;
     
     return result[0] as User || null;
   }
@@ -86,7 +85,7 @@ export class UserRepository {
     const result = await sql`
       DELETE FROM users WHERE id = ${id}
     `;
-    return result.count > 0;
+    return (result as unknown as { count: number }).count > 0;
   }
 
   async listUsers(status?: UserStatus, limit = 50, offset = 0): Promise<User[]> {

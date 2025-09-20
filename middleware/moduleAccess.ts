@@ -1,24 +1,26 @@
 import { Context, Next } from 'hono';
+import { createMiddleware } from 'hono/factory';
 import { ModuleService } from '../services/moduleService.ts';
 import { userRepository } from '../db/index.ts';
+import { User } from '../db/users.ts';
 
-interface ModuleContext {
+type ModuleContext = {
   Variables: {
     user?: { id: string; name: string };
-    userRecord?: any;
+    userRecord?: User;
     moduleAccess?: {
       moduleName: string;
       accessible: boolean;
       reason?: string;
     };
   };
-}
+};
 
 /**
  * Middleware to check if a user can access a specific module
  * Expects module name to be in the URL path as :moduleName
  */
-export const moduleAccessMiddleware = async (c: Context & ModuleContext, next: Next) => {
+export const moduleAccessMiddleware = createMiddleware(async (c, next) => {
   const user = c.get('user');
   if (!user) {
     return c.json({ error: 'Authentication required' }, 401);
@@ -62,11 +64,11 @@ export const moduleAccessMiddleware = async (c: Context & ModuleContext, next: N
     });
 
     await next();
-  } catch (error) {
-    console.error('Module access check failed:', error);
+  } catch (_error) {
+    console.error('Module access check failed:', _error);
     return c.json({ error: 'Failed to check module access' }, 500);
   }
-};
+});
 
 /**
  * Middleware specifically for module completion endpoints
@@ -105,8 +107,8 @@ export const moduleCompletionMiddleware = async (c: Context & ModuleContext, nex
     }
 
     await next();
-  } catch (error) {
-    console.error('Module completion check failed:', error);
+  } catch (_error) {
+    console.error('Module completion check failed:', _error);
     return c.json({ error: 'Failed to validate module completion' }, 500);
   }
 };
@@ -139,8 +141,8 @@ export const moduleReviewMiddleware = async (c: Context & ModuleContext, next: N
     }
 
     await next();
-  } catch (error) {
-    console.error('Module review check failed:', error);
+  } catch (_error) {
+    console.error('Module review check failed:', _error);
     return c.json({ error: 'Failed to validate module access' }, 500);
   }
 };
@@ -185,8 +187,8 @@ export const enforceSequentialAccess = async (c: Context & ModuleContext, next: 
 
     c.set('userRecord', userRecord);
     await next();
-  } catch (error) {
-    console.error('Sequential access enforcement failed:', error);
+  } catch (_error) {
+    console.error('Sequential access enforcement failed:', _error);
     return c.json({ error: 'Failed to enforce sequential access' }, 500);
   }
 };

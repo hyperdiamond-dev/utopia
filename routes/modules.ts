@@ -4,13 +4,18 @@ import { authMiddleware } from '../middleware/auth.ts';
 import {
   moduleAccessMiddleware,
   moduleCompletionMiddleware,
-  moduleReviewMiddleware,
-  enforceSequentialAccess
+  moduleReviewMiddleware
 } from '../middleware/moduleAccess.ts';
 import { ModuleService } from '../services/moduleService.ts';
 import { userRepository, moduleRepository } from '../db/index.ts';
+import { User } from '../db/users.ts';
 
-const modules = new Hono();
+type Variables = {
+  user?: { id: string; name: string };
+  userRecord?: User;
+};
+
+const modules = new Hono<{ Variables: Variables }>();
 
 // Validation schemas
 const moduleResponseSchema = z.object({
@@ -49,7 +54,7 @@ modules.get('/list', async (c) => {
  * Returns all modules with progress and accessibility info
  */
 modules.get('/', authMiddleware, async (c) => {
-  const user = c.get('user');
+  const user = c.get('user') as { id: string; name: string };
 
   try {
     const userRecord = await userRepository.findByUuid(user.id);
@@ -79,7 +84,7 @@ modules.get('/', authMiddleware, async (c) => {
  * Returns the module they should be working on
  */
 modules.get('/current', authMiddleware, async (c) => {
-  const user = c.get('user');
+  const user = c.get('user') as { id: string; name: string };
 
   try {
     const userRecord = await userRepository.findByUuid(user.id);
@@ -187,7 +192,7 @@ modules.post('/:moduleName/save', authMiddleware, moduleAccessMiddleware, async 
     const body = await c.req.json();
     const { responses } = partialResponseSchema.parse(body);
 
-    const progress = await ModuleService.saveModuleProgress(
+    const _progress = await ModuleService.saveModuleProgress(
       userRecord.id,
       moduleAccess.moduleName,
       responses
@@ -292,7 +297,7 @@ modules.get('/:moduleName/responses', authMiddleware, moduleAccessMiddleware, mo
  * GET /modules/progress/stats - Get detailed progress statistics
  */
 modules.get('/progress/stats', authMiddleware, async (c) => {
-  const user = c.get('user');
+  const user = c.get('user') as { id: string; name: string };
 
   try {
     const userRecord = await userRepository.findByUuid(user.id);

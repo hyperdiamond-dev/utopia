@@ -60,7 +60,7 @@ export class ConsentRepository {
       DELETE FROM consents 
       WHERE user_id = ${userId} AND version = ${version}
     `;
-    return result.count > 0;
+    return (result as unknown as { count: number }).count > 0;
   }
 
   async getUsersWithoutConsent(version: string): Promise<number[]> {
@@ -69,7 +69,7 @@ export class ConsentRepository {
       LEFT JOIN consents c ON u.id = c.user_id AND c.version = ${version}
       WHERE c.id IS NULL
     `;
-    return result.map((row: { id: number }) => row.id);
+    return (result as { id: number }[]).map(row => row.id);
   }
 
   async getConsentStats(version: string): Promise<{ total_users: number; consented_users: number; consent_rate: number }> {

@@ -25,7 +25,7 @@ export class UserService {
   }> {
     // Generate unique friendly alias
     const friendlyAlias = await AliasGenerator.generateUnique(
-      async (alias) => this.aliasExists(alias)
+      async (alias) => await this.aliasExists(alias)
     )
     
     // Generate secure password

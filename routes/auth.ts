@@ -19,7 +19,7 @@ auth.post('/create-anonymous', async (c) => {
       },
       message: 'Anonymous account created successfully',
     })
-  } catch (error) {
+  } catch (_error) {
     return c.json({ error: 'Failed to create user' }, 500)
   }
 })
@@ -63,7 +63,7 @@ auth.post('/login', async (c) => {
         username: user.friendlyAlias,
       },
     })
-  } catch (error) {
+  } catch (_error) {
     return c.json({ error: 'Authentication failed' }, 400)
   }
 })

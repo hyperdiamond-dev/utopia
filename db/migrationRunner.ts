@@ -68,7 +68,7 @@ export class MigrationRunner {
 
   private async getAppliedMigrations(): Promise<string[]> {
     const result = await sql`SELECT version FROM schema_migrations ORDER BY applied_at`;
-    return result.map((row: { version: string }) => row.version);
+    return (result as { version: string }[]).map(row => row.version);
   }
 
   private getVersionFromFilename(filename: string): string {
