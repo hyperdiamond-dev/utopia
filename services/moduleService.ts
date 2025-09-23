@@ -223,7 +223,7 @@ export class ModuleService {
     const module = await moduleRepository.getModuleByName(moduleName);
 
     await auditRepository.createAudit('MODULE_START', userId, {
-      module_id: module?.id,
+      module_id: module?.id ?? null,
       module_name: moduleName,
       reason,
       timestamp: new Date().toISOString()

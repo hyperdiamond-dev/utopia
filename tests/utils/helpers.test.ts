@@ -5,11 +5,11 @@ import {
   afterEach,
   assertEquals,
   assertExists,
-  stub,
   restore,
   setupTestEnv,
   restoreEnv,
-} from "../test-config.ts";
+  createStub,
+} from "../test-config-extended.ts";
 
 // Import utility modules to test
 import { AliasGenerator } from "../../services/aliasGenerator.ts";
@@ -30,7 +30,7 @@ describe("Utility Functions", () => {
   describe("AliasGenerator", () => {
     it("should generate unique friendly aliases", () => {
       // Mock the existence check to simulate collision and then success
-      const _mockExistsCheck = stub();
+      const mockExistsCheck = createStub();
       mockExistsCheck.onCall(0).resolves(true);  // First alias exists
       mockExistsCheck.onCall(1).resolves(false); // Second alias is unique
 
@@ -43,7 +43,7 @@ describe("Utility Functions", () => {
     });
 
     it("should handle maximum retry attempts", () => {
-      const _mockExistsCheck = stub().resolves(true); // Always exists
+      const mockExistsCheck = createStub().resolves(true); // Always exists
 
       // const promise = AliasGenerator.generateUnique(mockExistsCheck);
       // This should eventually throw or return after max retries
@@ -52,7 +52,7 @@ describe("Utility Functions", () => {
     });
 
     it("should generate aliases in expected format", () => {
-      const _mockExistsCheck = stub().resolves(false);
+      const mockExistsCheck = createStub().resolves(false);
 
       // const alias = await AliasGenerator.generateUnique(mockExistsCheck);
       // Test that alias matches expected pattern (e.g., "AdjectiveAnimal")

@@ -4,18 +4,13 @@ import { authMiddleware } from '../middleware/auth.ts';
 import {
   moduleAccessMiddleware,
   moduleCompletionMiddleware,
-  moduleReviewMiddleware
+  moduleReviewMiddleware,
+  ModuleContext
 } from '../middleware/moduleAccess.ts';
 import { ModuleService } from '../services/moduleService.ts';
 import { userRepository, moduleRepository } from '../db/index.ts';
-import { User } from '../db/users.ts';
 
-type Variables = {
-  user?: { id: string; name: string };
-  userRecord?: User;
-};
-
-const modules = new Hono<{ Variables: Variables }>();
+const modules = new Hono<ModuleContext>();
 
 // Validation schemas
 const moduleResponseSchema = z.object({
@@ -123,6 +118,14 @@ modules.get('/:moduleName', authMiddleware, moduleAccessMiddleware, moduleReview
   const userRecord = c.get('userRecord');
   const moduleAccess = c.get('moduleAccess');
 
+  if (!userRecord) {
+    return c.json({ error: 'User record not found' }, 500);
+  }
+
+  if (!moduleAccess) {
+    return c.json({ error: 'Module access validation failed' }, 500);
+  }
+
   try {
     const moduleData = await ModuleService.getModuleForUser(userRecord.id, moduleAccess.moduleName);
 
@@ -161,6 +164,14 @@ modules.post('/:moduleName/start', authMiddleware, moduleAccessMiddleware, async
   const userRecord = c.get('userRecord');
   const moduleAccess = c.get('moduleAccess');
 
+  if (!userRecord) {
+    return c.json({ error: 'User record not found' }, 500);
+  }
+
+  if (!moduleAccess) {
+    return c.json({ error: 'Module access validation failed' }, 500);
+  }
+
   try {
     const progress = await ModuleService.startModule(userRecord.id, moduleAccess.moduleName);
 
@@ -188,11 +199,19 @@ modules.post('/:moduleName/save', authMiddleware, moduleAccessMiddleware, async 
   const userRecord = c.get('userRecord');
   const moduleAccess = c.get('moduleAccess');
 
+  if (!userRecord) {
+    return c.json({ error: 'User record not found' }, 500);
+  }
+
+  if (!moduleAccess) {
+    return c.json({ error: 'Module access validation failed' }, 500);
+  }
+
   try {
     const body = await c.req.json();
     const { responses } = partialResponseSchema.parse(body);
 
-    const _progress = await ModuleService.saveModuleProgress(
+    await ModuleService.saveModuleProgress(
       userRecord.id,
       moduleAccess.moduleName,
       responses
@@ -226,6 +245,14 @@ modules.post('/:moduleName/complete',
   async (c) => {
     const userRecord = c.get('userRecord');
     const moduleAccess = c.get('moduleAccess');
+
+    if (!userRecord) {
+      return c.json({ error: 'User record not found' }, 500);
+    }
+
+    if (!moduleAccess) {
+      return c.json({ error: 'Module access validation failed' }, 500);
+    }
 
     try {
       const body = await c.req.json();
@@ -270,6 +297,14 @@ modules.post('/:moduleName/complete',
 modules.get('/:moduleName/responses', authMiddleware, moduleAccessMiddleware, moduleReviewMiddleware, async (c) => {
   const userRecord = c.get('userRecord');
   const moduleAccess = c.get('moduleAccess');
+
+  if (!userRecord) {
+    return c.json({ error: 'User record not found' }, 500);
+  }
+
+  if (!moduleAccess) {
+    return c.json({ error: 'Module access validation failed' }, 500);
+  }
 
   try {
     const moduleData = await ModuleService.getModuleForUser(userRecord.id, moduleAccess.moduleName);

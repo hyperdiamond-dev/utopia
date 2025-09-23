@@ -1,10 +1,9 @@
-import { Context, Next } from 'hono';
 import { createMiddleware } from 'hono/factory';
 import { ModuleService } from '../services/moduleService.ts';
 import { userRepository } from '../db/index.ts';
 import { User } from '../db/users.ts';
 
-type ModuleContext = {
+export type ModuleContext = {
   Variables: {
     user?: { id: string; name: string };
     userRecord?: User;
@@ -74,7 +73,7 @@ export const moduleAccessMiddleware = createMiddleware(async (c, next) => {
  * Middleware specifically for module completion endpoints
  * Ensures user has started the module before allowing completion
  */
-export const moduleCompletionMiddleware = async (c: Context & ModuleContext, next: Next) => {
+export const moduleCompletionMiddleware = createMiddleware(async (c, next) => {
   const userRecord = c.get('userRecord');
   const moduleAccess = c.get('moduleAccess');
 
@@ -111,13 +110,13 @@ export const moduleCompletionMiddleware = async (c: Context & ModuleContext, nex
     console.error('Module completion check failed:', _error);
     return c.json({ error: 'Failed to validate module completion' }, 500);
   }
-};
+});
 
 /**
  * Middleware for read-only access to completed modules
  * Allows viewing but not modification of completed modules
  */
-export const moduleReviewMiddleware = async (c: Context & ModuleContext, next: Next) => {
+export const moduleReviewMiddleware = createMiddleware(async (c, next) => {
   const userRecord = c.get('userRecord');
   const moduleAccess = c.get('moduleAccess');
 
@@ -145,12 +144,12 @@ export const moduleReviewMiddleware = async (c: Context & ModuleContext, next: N
     console.error('Module review check failed:', _error);
     return c.json({ error: 'Failed to validate module access' }, 500);
   }
-};
+});
 
 /**
  * Middleware to enforce sequential access and redirect to current module
  */
-export const enforceSequentialAccess = async (c: Context & ModuleContext, next: Next) => {
+export const enforceSequentialAccess = createMiddleware(async (c, next) => {
   const user = c.get('user');
   if (!user) {
     return c.json({ error: 'Authentication required' }, 401);
@@ -191,4 +190,4 @@ export const enforceSequentialAccess = async (c: Context & ModuleContext, next: 
     console.error('Sequential access enforcement failed:', _error);
     return c.json({ error: 'Failed to enforce sequential access' }, 500);
   }
-};
+});

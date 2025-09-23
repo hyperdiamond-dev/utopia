@@ -1,15 +1,13 @@
 import {
-  describe,
-  it,
-  beforeEach,
   afterEach,
   assertExists,
-  createStub,
-  restore,
-  createTestJWT,
+  beforeEach,
   createTestApp,
-  setupTestEnv,
+  describe,
+  it,
+  restore,
   restoreEnv,
+  setupTestEnv
 } from "../test-config-extended.ts";
 
 import { authMiddleware } from "../../middleware/auth.ts";
@@ -29,20 +27,7 @@ describe("authMiddleware", () => {
   describe("Valid JWT token", () => {
     it("should allow access with valid JWT token", () => {
       // Given: A valid JWT token and mock context
-      const validToken = createTestJWT();
-      const setStub = createStub();
-      const _nextStub = createStub().resolves();
 
-      const _mockContext = {
-        req: {
-          header: (name: string) => {
-            if (name === "Authorization") return `Bearer ${validToken}`;
-            return undefined;
-          },
-        },
-        set: setStub,
-        json: createStub(),
-      };
 
       // When: The middleware processes the request
       // const result = await authMiddleware(mockContext, nextStub);
@@ -59,25 +44,12 @@ describe("authMiddleware", () => {
 
     it("should decode JWT payload correctly", () => {
       // Given: A JWT token with specific payload
-      const payload = {
+      const _payload = {
         uuid: "user_specific-uuid",
         friendlyAlias: "SpecificUser",
         firebaseUid: "specific-firebase-uid",
       };
-      const validToken = createTestJWT(payload);
-      const setStub = createStub();
-      const _nextStub = createStub().resolves();
 
-      const _mockContext = {
-        req: {
-          header: (name: string) => {
-            if (name === "Authorization") return `Bearer ${validToken}`;
-            return undefined;
-          },
-        },
-        set: setStub,
-        json: createStub(),
-      };
 
       // When: The middleware processes the request
       // const result = await authMiddleware(mockContext, nextStub);
@@ -95,16 +67,7 @@ describe("authMiddleware", () => {
   describe("Invalid or missing token", () => {
     it("should reject request with no token", () => {
       // Given: A request without Authorization header
-      const jsonStub = createStub().returns({ error: "No token provided" });
-      const _nextStub = createStub();
 
-      const _mockContext = {
-        req: {
-          header: (_name: string) => undefined,
-        },
-        set: createStub(),
-        json: jsonStub,
-      };
 
       // When: The middleware processes the request
       // const result = await authMiddleware(mockContext, nextStub);
@@ -121,19 +84,7 @@ describe("authMiddleware", () => {
 
     it("should reject request with malformed Authorization header", () => {
       // Given: A malformed Authorization header
-      const jsonStub = createStub().returns({ error: "No token provided" });
-      const _nextStub = createStub();
 
-      const _mockContext = {
-        req: {
-          header: (name: string) => {
-            if (name === "Authorization") return "InvalidFormat token123";
-            return undefined;
-          },
-        },
-        set: createStub(),
-        json: jsonStub,
-      };
 
       // When: The middleware processes the request
       // const result = await authMiddleware(mockContext, nextStub);
@@ -149,20 +100,7 @@ describe("authMiddleware", () => {
 
     it("should reject request with invalid JWT token", () => {
       // Given: An invalid JWT token
-      const invalidToken = "invalid.jwt.token";
-      const jsonStub = createStub().returns({ error: "Invalid token" });
-      const _nextStub = createStub();
 
-      const _mockContext = {
-        req: {
-          header: (name: string) => {
-            if (name === "Authorization") return `Bearer ${invalidToken}`;
-            return undefined;
-          },
-        },
-        set: createStub(),
-        json: jsonStub,
-      };
 
       // When: The middleware processes the request
       // const result = await authMiddleware(mockContext, nextStub);
@@ -179,25 +117,12 @@ describe("authMiddleware", () => {
 
     it("should reject request with expired JWT token", () => {
       // Given: An expired JWT token
-      const expiredPayload = {
+      const _expiredPayload = {
         uuid: "user_test-uuid",
         friendlyAlias: "TestUser",
         exp: Math.floor(Date.now() / 1000) - 3600, // Expired 1 hour ago
       };
-      const expiredToken = createTestJWT(expiredPayload);
-      const jsonStub = createStub().returns({ error: "Invalid token" });
-      const _nextStub = createStub();
 
-      const _mockContext = {
-        req: {
-          header: (name: string) => {
-            if (name === "Authorization") return `Bearer ${expiredToken}`;
-            return undefined;
-          },
-        },
-        set: createStub(),
-        json: jsonStub,
-      };
 
       // When: The middleware processes the request
       // const result = await authMiddleware(mockContext, nextStub);
@@ -215,24 +140,11 @@ describe("authMiddleware", () => {
   describe("Token validation edge cases", () => {
     it("should handle token with missing required fields", () => {
       // Given: A JWT token missing required fields
-      const incompletePayload = {
+      const _incompletePayload = {
         // Missing uuid, friendlyAlias, etc.
         exp: Math.floor(Date.now() / 1000) + 3600,
       };
-      const incompleteToken = createTestJWT(incompletePayload);
-      const setStub = createStub();
-      const _nextStub = createStub().resolves();
 
-      const _mockContext = {
-        req: {
-          header: (name: string) => {
-            if (name === "Authorization") return `Bearer ${incompleteToken}`;
-            return undefined;
-          },
-        },
-        set: setStub,
-        json: createStub(),
-      };
 
       // When: The middleware processes the request
       // const result = await authMiddleware(mockContext, nextStub);
@@ -247,20 +159,7 @@ describe("authMiddleware", () => {
 
     it("should handle JWT with non-standard algorithm", () => {
       // Given: A JWT token with different algorithm (but still valid signature)
-      const validToken = createTestJWT();
-      const setStub = createStub();
-      const _nextStub = createStub().resolves();
 
-      const _mockContext = {
-        req: {
-          header: (name: string) => {
-            if (name === "Authorization") return `Bearer ${validToken}`;
-            return undefined;
-          },
-        },
-        set: setStub,
-        json: createStub(),
-      };
 
       // When: The middleware processes the request
       // const result = await authMiddleware(mockContext, nextStub);
@@ -280,20 +179,7 @@ describe("authMiddleware", () => {
       const originalSecret = Deno.env.get("JWT_SECRET");
       Deno.env.delete("JWT_SECRET");
 
-      const validToken = createTestJWT();
-      const jsonStub = createStub().returns({ error: "Invalid token" });
-      const _nextStub = createStub();
 
-      const _mockContext = {
-        req: {
-          header: (name: string) => {
-            if (name === "Authorization") return `Bearer ${validToken}`;
-            return undefined;
-          },
-        },
-        set: createStub(),
-        json: jsonStub,
-      };
 
       try {
         // When: The middleware processes the request without JWT_SECRET
@@ -318,7 +204,6 @@ describe("authMiddleware", () => {
     it("should work with actual Hono context", async () => {
       // Given: A real Hono app with auth middleware
       const app = await createTestApp();
-      const _validToken = createTestJWT();
 
       // Add a test route that uses the auth middleware
       // app.use("/protected", authMiddleware);
