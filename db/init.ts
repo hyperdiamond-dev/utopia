@@ -1,5 +1,6 @@
 #!/usr/bin/env deno run --allow-net --allow-read --allow-env
 
+import "@std/dotenv/load";
 import { migrationRunner } from "./migrationRunner.ts";
 
 async function main() {

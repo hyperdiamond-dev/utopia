@@ -4,8 +4,8 @@ import { v4 as uuidv4 } from "uuid";
 import { auth } from "../config/firebase.ts";
 import { userRepository } from "../db/index.ts";
 import { AliasGenerator } from "./aliasGenerator.ts";
-import { PasswordGenerator } from "./passwordGenerator.ts";
 import { ModuleService } from "./moduleService.ts";
+import { PasswordGenerator } from "./passwordGenerator.ts";
 
 export interface AnonymousUser {
   uuid: string;
@@ -31,7 +31,7 @@ export class UserService {
     const password = PasswordGenerator.generate();
 
     // Create UUID-based identifier
-    const uuid = `user_${uuidv4()}`;
+    const uuid = `${uuidv4()}`;
 
     // Hash password for storage
     const hashedPassword = await bcrypt.hash(password, 12);
