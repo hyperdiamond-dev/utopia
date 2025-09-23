@@ -9,6 +9,7 @@ if (!databaseUrl) {
 
 // Create and export the SQL connection
 export const sql = neon(databaseUrl);
+console.log("✅ Database connected");
 
 // Export the database URL if needed elsewhere
 export { databaseUrl };

@@ -22,7 +22,27 @@ const app = new Hono<AppContext>();
 app.use("*", secureHeaders());
 // @ts-ignore - TypeScript compatibility issue with hono-rate-limiter
 app.use("*", globalRateLimit); // Apply global rate limiting
-app.use("*", logger());
+
+// Enhanced logging for debugging
+app.use("*", logger((message, ...rest) => {
+  console.log(`[${new Date().toISOString()}] ${message}`, ...rest);
+}));
+
+// Debug middleware to log request details
+app.use("*", async (c, next) => {
+  const start = Date.now();
+  console.log(`\n� === DEBUG INFO ===`);
+  console.log(`� ${c.req.method} ${c.req.url}`);
+  console.log(`🌐 User-Agent: ${c.req.header("user-agent") || "Unknown"}`);
+  console.log(`� Authorization: ${c.req.header("authorization") ? "Present" : "Missing"}`);
+  console.log(`� Content-Type: ${c.req.header("content-type") || "Not specified"}`);
+  
+  await next();
+  
+  const ms = Date.now() - start;
+  console.log(`📤 Response: ${c.res.status} (${ms}ms)`);
+  console.log(`🔍 === END DEBUG ===\n`);
+});
 app.use(
   "*",
   cors({

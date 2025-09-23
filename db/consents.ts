@@ -15,7 +15,7 @@ export class ConsentRepository {
     content?: string,
   ): Promise<Consent> {
     const result = await sql`
-      INSERT INTO consents (user_id, version, content, consented_at)
+      INSERT INTO terminal_utopia.consents (user_id, version, content, consented_at)
       VALUES (${userId}, ${version}, ${content || null}, NOW())
       RETURNING *
     `;
@@ -27,7 +27,7 @@ export class ConsentRepository {
     version: string,
   ): Promise<Consent | null> {
     const result = await sql`
-      SELECT * FROM consents 
+      SELECT * FROM terminal_utopia.consents 
       WHERE user_id = ${userId} AND version = ${version}
       ORDER BY consented_at DESC
       LIMIT 1
@@ -37,7 +37,7 @@ export class ConsentRepository {
 
   async findByUser(userId: number): Promise<Consent[]> {
     const result = await sql`
-      SELECT * FROM consents 
+      SELECT * FROM terminal_utopia.consents 
       WHERE user_id = ${userId}
       ORDER BY consented_at DESC
     `;
@@ -46,7 +46,7 @@ export class ConsentRepository {
 
   async getLatestConsentByUser(userId: number): Promise<Consent | null> {
     const result = await sql`
-      SELECT * FROM consents 
+      SELECT * FROM terminal_utopia.consents 
       WHERE user_id = ${userId}
       ORDER BY consented_at DESC
       LIMIT 1
@@ -59,7 +59,7 @@ export class ConsentRepository {
     version: string,
   ): Promise<boolean> {
     const result = await sql`
-      SELECT COUNT(*) as count FROM consents 
+      SELECT COUNT(*) as count FROM terminal_utopia.consents 
       WHERE user_id = ${userId} AND version = ${version}
     `;
     return (result[0] as { count: number }).count > 0;
@@ -67,7 +67,7 @@ export class ConsentRepository {
 
   async revokeConsent(userId: number, version: string): Promise<boolean> {
     const result = await sql`
-      DELETE FROM consents 
+      DELETE FROM terminal_utopia.consents 
       WHERE user_id = ${userId} AND version = ${version}
     `;
     return (result as unknown as { count: number }).count > 0;
@@ -75,8 +75,8 @@ export class ConsentRepository {
 
   async getUsersWithoutConsent(version: string): Promise<number[]> {
     const result = await sql`
-      SELECT u.id FROM users u
-      LEFT JOIN consents c ON u.id = c.user_id AND c.version = ${version}
+      SELECT u.id FROM terminal_utopia.users u
+      LEFT JOIN terminal_utopia.consents c ON u.id = c.user_id AND c.version = ${version}
       WHERE c.id IS NULL
     `;
     return (result as { id: number }[]).map((row) => row.id);
@@ -94,8 +94,8 @@ export class ConsentRepository {
         ROUND(
           (COUNT(DISTINCT c.user_id)::decimal / NULLIF(COUNT(DISTINCT u.id), 0) * 100), 2
         ) as consent_rate
-      FROM users u
-      LEFT JOIN consents c ON u.id = c.user_id AND c.version = ${version}
+      FROM terminal_utopia.users u
+      LEFT JOIN terminal_utopia.consents c ON u.id = c.user_id AND c.version = ${version}
     `;
 
     const stats = result[0] as {

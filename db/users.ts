@@ -19,7 +19,7 @@ export class UserRepository {
     status: UserStatus = "ACTIVE",
   ): Promise<User> {
     const result = await sql`
-      INSERT INTO users (alias, uuid, status, created_at)
+      INSERT INTO terminal_utopia.users (alias, uuid, status, created_at)
       VALUES (${alias}, ${uuid}, ${status}, NOW())
       RETURNING *
     `;
@@ -28,21 +28,21 @@ export class UserRepository {
 
   async findByAlias(alias: string): Promise<User | null> {
     const result = await sql`
-      SELECT * FROM users WHERE alias = ${alias}
+      SELECT * FROM terminal_utopia.users WHERE alias = ${alias}
     `;
     return result[0] as User || null;
   }
 
   async findById(id: number): Promise<User | null> {
     const result = await sql`
-      SELECT * FROM users WHERE id = ${id}
+      SELECT * FROM terminal_utopia.users WHERE id = ${id}
     `;
     return result[0] as User || null;
   }
 
   async findByUuid(uuid: string): Promise<User | null> {
     const result = await sql`
-      SELECT * FROM users WHERE uuid = ${uuid}
+      SELECT * FROM terminal_utopia.users WHERE uuid = ${uuid}
     `;
     return result[0] as User || null;
   }
@@ -62,7 +62,7 @@ export class UserRepository {
       .join(", ");
 
     const result = await sql`
-      UPDATE users 
+      UPDATE terminal_utopia.users 
       SET ${sql.unsafe(setClause)}
       WHERE id = ${id}
       RETURNING *
@@ -73,7 +73,7 @@ export class UserRepository {
 
   async updateLastLogin(id: number): Promise<User | null> {
     const result = await sql`
-      UPDATE users 
+      UPDATE terminal_utopia.users 
       SET last_login = NOW()
       WHERE id = ${id}
       RETURNING *
@@ -86,7 +86,7 @@ export class UserRepository {
     moduleId: number | null,
   ): Promise<User | null> {
     const result = await sql`
-      UPDATE users 
+      UPDATE terminal_utopia.users 
       SET active_module = ${moduleId}
       WHERE id = ${id}
       RETURNING *
@@ -96,7 +96,7 @@ export class UserRepository {
 
   async deleteUser(id: number): Promise<boolean> {
     const result = await sql`
-      DELETE FROM users WHERE id = ${id}
+      DELETE FROM terminal_utopia.users WHERE id = ${id}
     `;
     return (result as unknown as { count: number }).count > 0;
   }
@@ -108,7 +108,7 @@ export class UserRepository {
   ): Promise<User[]> {
     if (status) {
       const result = await sql`
-        SELECT * FROM users 
+        SELECT * FROM terminal_utopia.users 
         WHERE status = ${status}
         ORDER BY created_at DESC
         LIMIT ${limit} OFFSET ${offset}
@@ -117,7 +117,7 @@ export class UserRepository {
     }
 
     const result = await sql`
-      SELECT * FROM users 
+      SELECT * FROM terminal_utopia.users 
       ORDER BY created_at DESC
       LIMIT ${limit} OFFSET ${offset}
     `;

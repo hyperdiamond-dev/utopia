@@ -25,7 +25,7 @@ export class AuditRepository {
     details?: AuditDetails,
   ): Promise<Audit> {
     const result = await sql`
-      INSERT INTO audits (event_type, user_id, timestamp, details)
+      INSERT INTO terminal_utopia.audits (event_type, user_id, timestamp, details)
       VALUES (${eventType}, ${userId}, NOW(), ${
       details ? JSON.stringify(details) : null
     })
@@ -36,7 +36,7 @@ export class AuditRepository {
 
   async findByUser(userId: number, limit = 50, offset = 0): Promise<Audit[]> {
     const result = await sql`
-      SELECT * FROM audits 
+      SELECT * FROM terminal_utopia.audits 
       WHERE user_id = ${userId}
       ORDER BY timestamp DESC
       LIMIT ${limit} OFFSET ${offset}
@@ -50,7 +50,7 @@ export class AuditRepository {
     offset = 0,
   ): Promise<Audit[]> {
     const result = await sql`
-      SELECT * FROM audits 
+      SELECT * FROM terminal_utopia.audits 
       WHERE event_type = ${eventType}
       ORDER BY timestamp DESC
       LIMIT ${limit} OFFSET ${offset}
@@ -65,7 +65,7 @@ export class AuditRepository {
     offset = 0,
   ): Promise<Audit[]> {
     const result = await sql`
-      SELECT * FROM audits 
+      SELECT * FROM terminal_utopia.audits 
       WHERE user_id = ${userId} AND event_type = ${eventType}
       ORDER BY timestamp DESC
       LIMIT ${limit} OFFSET ${offset}
@@ -76,8 +76,8 @@ export class AuditRepository {
   async findRecentAudits(limit = 100): Promise<Audit[]> {
     const result = await sql`
       SELECT a.*, u.alias as user_alias
-      FROM audits a
-      JOIN users u ON a.user_id = u.id
+      FROM terminal_utopia.audits a
+      JOIN terminal_utopia.users u ON a.user_id = u.id
       ORDER BY a.timestamp DESC
       LIMIT ${limit}
     `;
@@ -97,7 +97,7 @@ export class AuditRepository {
       SELECT 
         COUNT(*) as total_events,
         COUNT(DISTINCT user_id) as unique_users
-      FROM audits 
+      FROM terminal_utopia.audits 
       WHERE timestamp >= ${cutoffDate.toISOString()}
     `;
 
@@ -106,7 +106,7 @@ export class AuditRepository {
       SELECT 
         event_type,
         COUNT(*) as count
-      FROM audits 
+      FROM terminal_utopia.audits 
       WHERE timestamp >= ${cutoffDate.toISOString()}
       GROUP BY event_type
     `;
@@ -133,7 +133,7 @@ export class AuditRepository {
 
   async getLastLoginByUser(userId: number): Promise<Audit | null> {
     const result = await sql`
-      SELECT * FROM audits 
+      SELECT * FROM terminal_utopia.audits 
       WHERE user_id = ${userId} AND event_type = 'LOGIN'
       ORDER BY timestamp DESC
       LIMIT 1
@@ -146,7 +146,7 @@ export class AuditRepository {
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
 
     const result = await sql`
-      DELETE FROM audits 
+      DELETE FROM terminal_utopia.audits 
       WHERE timestamp < ${cutoffDate.toISOString()}
     `;
 

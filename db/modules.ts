@@ -34,7 +34,7 @@ export class ModuleRepository {
   // Get all active modules in sequence order
   async getAllModules(): Promise<Module[]> {
     const result = await sql`
-      SELECT * FROM modules
+      SELECT * FROM terminal_utopia.modules
       WHERE is_active = true
       ORDER BY sequence_order ASC
     `;
@@ -44,7 +44,7 @@ export class ModuleRepository {
   // Get module by name
   async getModuleByName(name: string): Promise<Module | null> {
     const result = await sql`
-      SELECT * FROM modules WHERE name = ${name} AND is_active = true
+      SELECT * FROM terminal_utopia.modules WHERE name = ${name} AND is_active = true
     `;
     return result[0] as Module || null;
   }
@@ -52,7 +52,7 @@ export class ModuleRepository {
   // Get module by ID
   async getModuleById(id: number): Promise<Module | null> {
     const result = await sql`
-      SELECT * FROM modules WHERE id = ${id} AND is_active = true
+      SELECT * FROM terminal_utopia.modules WHERE id = ${id} AND is_active = true
     `;
     return result[0] as Module || null;
   }
@@ -63,7 +63,7 @@ export class ModuleRepository {
     moduleId: number,
   ): Promise<UserModuleProgress | null> {
     const result = await sql`
-      SELECT * FROM user_module_progress
+      SELECT * FROM terminal_utopia.user_module_progress
       WHERE user_id = ${userId} AND module_id = ${moduleId}
     `;
     return result[0] as UserModuleProgress || null;
@@ -72,7 +72,7 @@ export class ModuleRepository {
   // Get all user's module progress
   async getUserProgress(userId: number): Promise<UserModuleProgress[]> {
     const result = await sql`
-      SELECT * FROM user_module_progress
+      SELECT * FROM terminal_utopia.user_module_progress
       WHERE user_id = ${userId}
       ORDER BY created_at ASC
     `;
@@ -112,8 +112,8 @@ export class ModuleRepository {
     // Check if all previous modules are completed
     const result = await sql`
       SELECT COUNT(*) as incomplete_count
-      FROM modules m
-      LEFT JOIN user_module_progress ump ON m.id = ump.module_id AND ump.user_id = ${userId}
+      FROM terminal_utopia.modules m
+      LEFT JOIN terminal_utopia.user_module_progress ump ON m.id = ump.module_id AND ump.user_id = ${userId}
       WHERE m.is_active = true
         AND m.sequence_order < ${targetModule.sequence_order}
         AND (ump.status IS NULL OR ump.status != 'COMPLETED')
@@ -138,7 +138,7 @@ export class ModuleRepository {
 
     // Insert or update progress
     const result = await sql`
-      INSERT INTO user_module_progress (user_id, module_id, status, started_at)
+      INSERT INTO terminal_utopia.user_module_progress (user_id, module_id, status, started_at)
       VALUES (${userId}, ${moduleId}, 'IN_PROGRESS', NOW())
       ON CONFLICT (user_id, module_id)
       DO UPDATE SET
@@ -166,7 +166,7 @@ export class ModuleRepository {
     }
 
     const result = await sql`
-      INSERT INTO user_module_progress (user_id, module_id, status, started_at, completed_at, response_data)
+      INSERT INTO terminal_utopia.user_module_progress (user_id, module_id, status, started_at, completed_at, response_data)
       VALUES (${userId}, ${moduleId}, 'COMPLETED', NOW(), NOW(), ${
       JSON.stringify(responseData)
     })
@@ -190,7 +190,7 @@ export class ModuleRepository {
     responseData: unknown,
   ): Promise<UserModuleProgress | null> {
     const result = await sql`
-      UPDATE user_module_progress
+      UPDATE terminal_utopia.user_module_progress
       SET response_data = ${JSON.stringify(responseData)}, updated_at = NOW()
       WHERE user_id = ${userId} AND module_id = ${moduleId}
       RETURNING *
@@ -222,8 +222,8 @@ export class ModuleRepository {
   async getCurrentModule(userId: number): Promise<Module | null> {
     // First, check if there's an in-progress module
     const result = await sql`
-      SELECT m.* FROM modules m
-      INNER JOIN user_module_progress ump ON m.id = ump.module_id
+      SELECT m.* FROM terminal_utopia.modules m
+      INNER JOIN terminal_utopia.user_module_progress ump ON m.id = ump.module_id
       WHERE ump.user_id = ${userId} AND ump.status = 'IN_PROGRESS'
       ORDER BY m.sequence_order ASC
       LIMIT 1
@@ -245,12 +245,12 @@ export class ModuleRepository {
     completion_percentage: number;
   }> {
     const totalModules = await sql`
-      SELECT COUNT(*) as count FROM modules WHERE is_active = true
+      SELECT COUNT(*) as count FROM terminal_utopia.modules WHERE is_active = true
     `;
 
     const completedModules = await sql`
-      SELECT COUNT(*) as count FROM user_module_progress ump
-      INNER JOIN modules m ON ump.module_id = m.id
+      SELECT COUNT(*) as count FROM terminal_utopia.user_module_progress ump
+      INNER JOIN terminal_utopia.modules m ON ump.module_id = m.id
       WHERE ump.user_id = ${userId} AND ump.status = 'COMPLETED' AND m.is_active = true
     `;
 
