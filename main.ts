@@ -12,7 +12,7 @@ import { modules } from "./routes/modules.ts";
 
 interface AppContext extends Env {
   Variables: {
-    user?: { id: string; name: string };
+    user?: { uuid: string, id?: string; name: string };
   };
 }
 
@@ -60,7 +60,7 @@ app.route("/api/modules", modules);
 
 // Protected routes example
 app.get("/api/profile", authMiddleware, (c) => {
-  const user = c.get("user") as { id: string; name: string };
+  const user = c.get("user");
   return c.json({
     message: "Protected route accessed",
     user,

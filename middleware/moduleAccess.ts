@@ -1,11 +1,11 @@
 import { createMiddleware } from "hono/factory";
-import { ModuleService } from "../services/moduleService.ts";
 import { userRepository } from "../db/index.ts";
 import { User } from "../db/users.ts";
+import { ModuleService } from "../services/moduleService.ts";
 
 export type ModuleContext = {
   Variables: {
-    user?: { id: string; name: string };
+    user?: { uuid: string, id?: string; name: string };
     userRecord?: User;
     moduleAccess?: {
       moduleName: string;

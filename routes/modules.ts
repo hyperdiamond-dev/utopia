@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
+import { moduleRepository, userRepository } from "../db/index.ts";
 import { authMiddleware } from "../middleware/auth.ts";
 import {
   moduleAccessMiddleware,
@@ -8,7 +9,6 @@ import {
   moduleReviewMiddleware,
 } from "../middleware/moduleAccess.ts";
 import { ModuleService } from "../services/moduleService.ts";
-import { moduleRepository, userRepository } from "../db/index.ts";
 
 const modules = new Hono<ModuleContext>();
 
@@ -49,10 +49,12 @@ modules.get("/list", async (c) => {
  * Returns all modules with progress and accessibility info
  */
 modules.get("/", authMiddleware, async (c) => {
-  const user = c.get("user") as { id: string; name: string };
-
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: "User not found in context" }, 500);
+  }
   try {
-    const userRecord = await userRepository.findByUuid(user.id);
+    const userRecord = await userRepository.findByUuid(user.uuid);
     if (!userRecord) {
       return c.json({ error: "User not found" }, 404);
     }
@@ -79,10 +81,12 @@ modules.get("/", authMiddleware, async (c) => {
  * Returns the module they should be working on
  */
 modules.get("/current", authMiddleware, async (c) => {
-  const user = c.get("user") as { id: string; name: string };
-
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: "User not found in context" }, 500);
+  }
   try {
-    const userRecord = await userRepository.findByUuid(user.id);
+    const userRecord = await userRepository.findByUuid(user.uuid);
     if (!userRecord) {
       return c.json({ error: "User not found" }, 404);
     }
@@ -381,10 +385,12 @@ modules.get(
  * GET /modules/progress/stats - Get detailed progress statistics
  */
 modules.get("/progress/stats", authMiddleware, async (c) => {
-  const user = c.get("user") as { id: string; name: string };
-
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: "User not found in context" }, 500);
+  }
   try {
-    const userRecord = await userRepository.findByUuid(user.id);
+    const userRecord = await userRepository.findByUuid(user.uuid);
     if (!userRecord) {
       return c.json({ error: "User not found" }, 404);
     }
