@@ -1,6 +1,7 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with
+code in this repository.
 
 ## Essential Commands
 
@@ -10,7 +11,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 deno task start
 ```
 
-Runs the Hono server on port 3001 (or PORT env var) with all necessary permissions.
+Runs the Hono server on port 3001 (or PORT env var) with all necessary
+permissions.
 
 **Code Quality:**
 
@@ -23,6 +25,7 @@ deno lint                   # Lint code
 ## Architecture Overview
 
 **Runtime & Framework:**
+
 - **Deno** runtime with TypeScript
 - **Hono** web framework for HTTP server
 - **Firebase Admin SDK** for user authentication and management
@@ -57,7 +60,8 @@ Routes → Services → Repositories → Database
 
 **Authentication Flow:**
 
-1. POST `/api/auth/create-anonymous` - Creates user with friendly alias + password
+1. POST `/api/auth/create-anonymous` - Creates user with friendly alias +
+   password
 2. POST `/api/auth/login` - Authenticates with alias/password, returns JWT
 3. Protected routes use `authMiddleware` to validate JWT tokens
 
@@ -107,7 +111,8 @@ Required environment variables:
 
 **Module Flow:**
 
-- Users progress through modules sequentially: Consent → Module 1 → Module 2 → Module 3 → Module 4
+- Users progress through modules sequentially: Consent → Module 1 → Module 2 →
+  Module 3 → Module 4
 - Each module must be completed before the next unlocks
 - Completed modules remain accessible for review (read-only)
 - Module progress tracked in `user_module_progress` table

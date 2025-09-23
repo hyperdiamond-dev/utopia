@@ -1,11 +1,11 @@
-import { sql } from './connection.ts';
+import { sql } from "./connection.ts";
 
-export type EventType = 
-  | 'LOGIN' 
-  | 'LOGOUT' 
-  | 'CONSENT' 
-  | 'MODULE_START' 
-  | 'MODULE_COMPLETION';
+export type EventType =
+  | "LOGIN"
+  | "LOGOUT"
+  | "CONSENT"
+  | "MODULE_START"
+  | "MODULE_COMPLETION";
 
 // Define a more specific type for audit details
 export type AuditDetails = Record<string, string | number | boolean | null>;
@@ -20,13 +20,15 @@ export interface Audit {
 
 export class AuditRepository {
   async createAudit(
-    eventType: EventType, 
-    userId: number, 
-    details?: AuditDetails
+    eventType: EventType,
+    userId: number,
+    details?: AuditDetails,
   ): Promise<Audit> {
     const result = await sql`
       INSERT INTO audits (event_type, user_id, timestamp, details)
-      VALUES (${eventType}, ${userId}, NOW(), ${details ? JSON.stringify(details) : null})
+      VALUES (${eventType}, ${userId}, NOW(), ${
+      details ? JSON.stringify(details) : null
+    })
       RETURNING *
     `;
     return result[0] as Audit;
@@ -42,7 +44,11 @@ export class AuditRepository {
     return result as Audit[];
   }
 
-  async findByEventType(eventType: EventType, limit = 100, offset = 0): Promise<Audit[]> {
+  async findByEventType(
+    eventType: EventType,
+    limit = 100,
+    offset = 0,
+  ): Promise<Audit[]> {
     const result = await sql`
       SELECT * FROM audits 
       WHERE event_type = ${eventType}
@@ -53,10 +59,10 @@ export class AuditRepository {
   }
 
   async findByUserAndEventType(
-    userId: number, 
-    eventType: EventType, 
-    limit = 50, 
-    offset = 0
+    userId: number,
+    eventType: EventType,
+    limit = 50,
+    offset = 0,
   ): Promise<Audit[]> {
     const result = await sql`
       SELECT * FROM audits 
@@ -105,16 +111,23 @@ export class AuditRepository {
       GROUP BY event_type
     `;
 
-    const stats = totalResult[0] as { total_events: number; unique_users: number };
-    const eventsByType = (eventTypeResult as { event_type: EventType; count: number }[]).reduce((acc: Record<EventType, number>, row) => {
-      acc[row.event_type] = row.count;
-      return acc;
-    }, {} as Record<EventType, number>);
+    const stats = totalResult[0] as {
+      total_events: number;
+      unique_users: number;
+    };
+    const eventsByType =
+      (eventTypeResult as { event_type: EventType; count: number }[]).reduce(
+        (acc: Record<EventType, number>, row) => {
+          acc[row.event_type] = row.count;
+          return acc;
+        },
+        {} as Record<EventType, number>,
+      );
 
     return {
       total_events: stats.total_events,
       events_by_type: eventsByType,
-      unique_users: stats.unique_users
+      unique_users: stats.unique_users,
     };
   }
 
@@ -136,29 +149,29 @@ export class AuditRepository {
       DELETE FROM audits 
       WHERE timestamp < ${cutoffDate.toISOString()}
     `;
-    
+
     return (result as unknown as { count: number }).count;
   }
 
   // Helper methods for common audit logging
   logLogin(userId: number, details?: AuditDetails): Promise<Audit> {
-    return this.createAudit('LOGIN', userId, details);
+    return this.createAudit("LOGIN", userId, details);
   }
 
   logLogout(userId: number, details?: AuditDetails): Promise<Audit> {
-    return this.createAudit('LOGOUT', userId, details);
+    return this.createAudit("LOGOUT", userId, details);
   }
 
   logConsent(userId: number, details?: AuditDetails): Promise<Audit> {
-    return this.createAudit('CONSENT', userId, details);
+    return this.createAudit("CONSENT", userId, details);
   }
 
   logModuleStart(userId: number, details?: AuditDetails): Promise<Audit> {
-    return this.createAudit('MODULE_START', userId, details);
+    return this.createAudit("MODULE_START", userId, details);
   }
 
   logModuleCompletion(userId: number, details?: AuditDetails): Promise<Audit> {
-    return this.createAudit('MODULE_COMPLETION', userId, details);
+    return this.createAudit("MODULE_COMPLETION", userId, details);
   }
 }
 

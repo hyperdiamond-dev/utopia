@@ -1,6 +1,6 @@
-import { sql } from './connection.ts';
+import { sql } from "./connection.ts";
 
-export type ModuleStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+export type ModuleStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
 
 export interface Module {
   id: number;
@@ -58,7 +58,10 @@ export class ModuleRepository {
   }
 
   // Get user's progress for a specific module
-  async getUserModuleProgress(userId: number, moduleId: number): Promise<UserModuleProgress | null> {
+  async getUserModuleProgress(
+    userId: number,
+    moduleId: number,
+  ): Promise<UserModuleProgress | null> {
     const result = await sql`
       SELECT * FROM user_module_progress
       WHERE user_id = ${userId} AND module_id = ${moduleId}
@@ -80,7 +83,7 @@ export class ModuleRepository {
   async getModulesWithProgress(userId: number): Promise<ModuleWithProgress[]> {
     const modules = await this.getAllModules();
     const userProgress = await this.getUserProgress(userId);
-    const progressMap = new Map(userProgress.map(p => [p.module_id, p]));
+    const progressMap = new Map(userProgress.map((p) => [p.module_id, p]));
 
     const modulesWithProgress: ModuleWithProgress[] = [];
 
@@ -91,7 +94,7 @@ export class ModuleRepository {
       modulesWithProgress.push({
         ...module,
         user_progress: progress,
-        accessible
+        accessible,
       });
     }
 
@@ -121,11 +124,16 @@ export class ModuleRepository {
   }
 
   // Start a module (mark as in progress)
-  async startModule(userId: number, moduleId: number): Promise<UserModuleProgress> {
+  async startModule(
+    userId: number,
+    moduleId: number,
+  ): Promise<UserModuleProgress> {
     // Check if module is accessible
     const accessible = await this.isModuleAccessible(userId, moduleId);
     if (!accessible) {
-      throw new Error('Module not accessible - complete previous modules first');
+      throw new Error(
+        "Module not accessible - complete previous modules first",
+      );
     }
 
     // Insert or update progress
@@ -147,17 +155,21 @@ export class ModuleRepository {
   async completeModule(
     userId: number,
     moduleId: number,
-    responseData?: unknown
+    responseData?: unknown,
   ): Promise<UserModuleProgress> {
     // Check if module is accessible
     const accessible = await this.isModuleAccessible(userId, moduleId);
     if (!accessible) {
-      throw new Error('Module not accessible - complete previous modules first');
+      throw new Error(
+        "Module not accessible - complete previous modules first",
+      );
     }
 
     const result = await sql`
       INSERT INTO user_module_progress (user_id, module_id, status, started_at, completed_at, response_data)
-      VALUES (${userId}, ${moduleId}, 'COMPLETED', NOW(), NOW(), ${JSON.stringify(responseData)})
+      VALUES (${userId}, ${moduleId}, 'COMPLETED', NOW(), NOW(), ${
+      JSON.stringify(responseData)
+    })
       ON CONFLICT (user_id, module_id)
       DO UPDATE SET
         status = 'COMPLETED',
@@ -175,7 +187,7 @@ export class ModuleRepository {
   async updateModuleResponse(
     userId: number,
     moduleId: number,
-    responseData: unknown
+    responseData: unknown,
   ): Promise<UserModuleProgress | null> {
     const result = await sql`
       UPDATE user_module_progress
@@ -195,8 +207,10 @@ export class ModuleRepository {
       const progress = await this.getUserModuleProgress(userId, module.id);
 
       // If module not started or in progress, and it's accessible, return it
-      if ((!progress || progress.status !== 'COMPLETED') &&
-          await this.isModuleAccessible(userId, module.id)) {
+      if (
+        (!progress || progress.status !== "COMPLETED") &&
+        await this.isModuleAccessible(userId, module.id)
+      ) {
         return module;
       }
     }
@@ -249,7 +263,9 @@ export class ModuleRepository {
       total_modules: total,
       completed_modules: completed,
       current_module: currentModule?.name,
-      completion_percentage: total > 0 ? Math.round((completed / total) * 100) : 0
+      completion_percentage: total > 0
+        ? Math.round((completed / total) * 100)
+        : 0,
     };
   }
 }

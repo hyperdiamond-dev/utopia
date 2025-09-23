@@ -1,10 +1,10 @@
-import { neon } from '@neon/serverless';
+import { neon } from "@neon/serverless";
 
 // Ensure DATABASE_URL is available
-const databaseUrl = Deno.env.get('DATABASE_URL');
+const databaseUrl = Deno.env.get("DATABASE_URL");
 
 if (!databaseUrl) {
-  throw new Error('DATABASE_URL environment variable is required');
+  throw new Error("DATABASE_URL environment variable is required");
 }
 
 // Create and export the SQL connection

@@ -1,21 +1,21 @@
 // src/config/firebase.ts
-import { cert, getApps, initializeApp } from 'firebase-admin/app'
-import { getAuth } from 'firebase-admin/auth'
+import { cert, getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 
 // Suppress Node-specific warnings
-Deno.env.set("GOOGLE_SDK_NODE_LOGGING", "false")
+Deno.env.set("GOOGLE_SDK_NODE_LOGGING", "false");
 
 // Initialize Firebase Admin SDK
 const firebaseConfig = {
   credential: cert({
-    projectId: Deno.env.get('FIREBASE_PROJECT_ID'),
-    privateKey: Deno.env.get('FIREBASE_PRIVATE_KEY')?.replace(/\\n/g, '\n'),
-    clientEmail: Deno.env.get('FIREBASE_CLIENT_EMAIL'),
+    projectId: Deno.env.get("FIREBASE_PROJECT_ID"),
+    privateKey: Deno.env.get("FIREBASE_PRIVATE_KEY")?.replace(/\\n/g, "\n"),
+    clientEmail: Deno.env.get("FIREBASE_CLIENT_EMAIL"),
   }),
-}
+};
 
-export const firebaseApp = getApps().length === 0 
-  ? initializeApp(firebaseConfig) 
-  : getApps()[0]
+export const firebaseApp = getApps().length === 0
+  ? initializeApp(firebaseConfig)
+  : getApps()[0];
 
-export const auth = getAuth(firebaseApp)
+export const auth = getAuth(firebaseApp);

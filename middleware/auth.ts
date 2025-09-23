@@ -1,6 +1,6 @@
 // src/middleware/auth.ts
-import { createMiddleware } from 'hono/factory'
-import jwt from 'jsonwebtoken'
+import { createMiddleware } from "hono/factory";
+import jwt from "jsonwebtoken";
 
 interface JWTPayload {
   uuid?: string;
@@ -12,17 +12,20 @@ interface JWTPayload {
 }
 
 export const authMiddleware = createMiddleware(async (c, next) => {
-  const token = c.req.header('Authorization')?.replace('Bearer ', '')
+  const token = c.req.header("Authorization")?.replace("Bearer ", "");
 
   if (!token) {
-    return c.json({ error: 'No token provided' }, 401)
+    return c.json({ error: "No token provided" }, 401);
   }
 
   try {
-    const decoded = jwt.verify(token, Deno.env.get('JWT_SECRET')!) as JWTPayload
-    c.set('user', decoded)
-    await next()
+    const decoded = jwt.verify(
+      token,
+      Deno.env.get("JWT_SECRET")!,
+    ) as JWTPayload;
+    c.set("user", decoded);
+    await next();
   } catch (_error) {
-    return c.json({ error: 'Invalid token' }, 401)
+    return c.json({ error: "Invalid token" }, 401);
   }
-})
+});

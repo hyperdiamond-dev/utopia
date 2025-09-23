@@ -1,5 +1,5 @@
 // src/services/passwordGenerator.ts
-import generator from 'generate-password'
+import generator from "generate-password";
 
 export class PasswordGenerator {
   static generate(): string {
@@ -11,6 +11,6 @@ export class PasswordGenerator {
       lowercase: true,
       excludeSimilarCharacters: true,
       strict: true,
-    })
+    });
   }
 }

@@ -1,4 +1,4 @@
-import { sql } from './connection.ts';
+import { sql } from "./connection.ts";
 
 export interface Consent {
   id: number;
@@ -9,7 +9,11 @@ export interface Consent {
 }
 
 export class ConsentRepository {
-  async createConsent(userId: number, version: string, content?: string): Promise<Consent> {
+  async createConsent(
+    userId: number,
+    version: string,
+    content?: string,
+  ): Promise<Consent> {
     const result = await sql`
       INSERT INTO consents (user_id, version, content, consented_at)
       VALUES (${userId}, ${version}, ${content || null}, NOW())
@@ -18,7 +22,10 @@ export class ConsentRepository {
     return result[0] as Consent;
   }
 
-  async findByUserAndVersion(userId: number, version: string): Promise<Consent | null> {
+  async findByUserAndVersion(
+    userId: number,
+    version: string,
+  ): Promise<Consent | null> {
     const result = await sql`
       SELECT * FROM consents 
       WHERE user_id = ${userId} AND version = ${version}
@@ -47,7 +54,10 @@ export class ConsentRepository {
     return result[0] as Consent || null;
   }
 
-  async hasUserConsentedToVersion(userId: number, version: string): Promise<boolean> {
+  async hasUserConsentedToVersion(
+    userId: number,
+    version: string,
+  ): Promise<boolean> {
     const result = await sql`
       SELECT COUNT(*) as count FROM consents 
       WHERE user_id = ${userId} AND version = ${version}
@@ -69,10 +79,14 @@ export class ConsentRepository {
       LEFT JOIN consents c ON u.id = c.user_id AND c.version = ${version}
       WHERE c.id IS NULL
     `;
-    return (result as { id: number }[]).map(row => row.id);
+    return (result as { id: number }[]).map((row) => row.id);
   }
 
-  async getConsentStats(version: string): Promise<{ total_users: number; consented_users: number; consent_rate: number }> {
+  async getConsentStats(
+    version: string,
+  ): Promise<
+    { total_users: number; consented_users: number; consent_rate: number }
+  > {
     const result = await sql`
       SELECT 
         COUNT(DISTINCT u.id) as total_users,
@@ -83,12 +97,16 @@ export class ConsentRepository {
       FROM users u
       LEFT JOIN consents c ON u.id = c.user_id AND c.version = ${version}
     `;
-    
-    const stats = result[0] as { total_users: number; consented_users: number; consent_rate: number };
+
+    const stats = result[0] as {
+      total_users: number;
+      consented_users: number;
+      consent_rate: number;
+    };
     return {
       total_users: stats.total_users,
       consented_users: stats.consented_users,
-      consent_rate: stats.consent_rate || 0
+      consent_rate: stats.consent_rate || 0,
     };
   }
 }

@@ -1,6 +1,6 @@
-import { sql } from './connection.ts';
+import { sql } from "./connection.ts";
 
-export type UserStatus = 'ACTIVE' | 'WITHDRAWN' | 'FLAGGED';
+export type UserStatus = "ACTIVE" | "WITHDRAWN" | "FLAGGED";
 
 export interface User {
   id: number;
@@ -13,7 +13,11 @@ export interface User {
 }
 
 export class UserRepository {
-  async createUser(alias: string, uuid: string, status: UserStatus = 'ACTIVE'): Promise<User> {
+  async createUser(
+    alias: string,
+    uuid: string,
+    status: UserStatus = "ACTIVE",
+  ): Promise<User> {
     const result = await sql`
       INSERT INTO users (alias, uuid, status, created_at)
       VALUES (${alias}, ${uuid}, ${status}, NOW())
@@ -43,13 +47,19 @@ export class UserRepository {
     return result[0] as User || null;
   }
 
-  async updateUser(id: number, updates: Partial<Omit<User, 'id' | 'uuid' | 'created_at'>>): Promise<User | null> {
+  async updateUser(
+    id: number,
+    updates: Partial<Omit<User, "id" | "uuid" | "created_at">>,
+  ): Promise<User | null> {
     if (Object.keys(updates).length === 0) return null;
 
-    const entries = Object.entries(updates).filter(([_, value]) => value !== undefined);
+    const entries = Object.entries(updates).filter(([_, value]) =>
+      value !== undefined
+    );
     if (entries.length === 0) return null;
 
-    const setClause = entries.map(([key], index) => `${key} = $${index + 2}`).join(', ');
+    const setClause = entries.map(([key], index) => `${key} = $${index + 2}`)
+      .join(", ");
 
     const result = await sql`
       UPDATE users 
@@ -57,7 +67,7 @@ export class UserRepository {
       WHERE id = ${id}
       RETURNING *
     `;
-    
+
     return result[0] as User || null;
   }
 
@@ -71,7 +81,10 @@ export class UserRepository {
     return result[0] as User || null;
   }
 
-  async setActiveModule(id: number, moduleId: number | null): Promise<User | null> {
+  async setActiveModule(
+    id: number,
+    moduleId: number | null,
+  ): Promise<User | null> {
     const result = await sql`
       UPDATE users 
       SET active_module = ${moduleId}
@@ -88,7 +101,11 @@ export class UserRepository {
     return (result as unknown as { count: number }).count > 0;
   }
 
-  async listUsers(status?: UserStatus, limit = 50, offset = 0): Promise<User[]> {
+  async listUsers(
+    status?: UserStatus,
+    limit = 50,
+    offset = 0,
+  ): Promise<User[]> {
     if (status) {
       const result = await sql`
         SELECT * FROM users 

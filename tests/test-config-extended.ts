@@ -1,5 +1,5 @@
 // Extended test configuration for proper stub functionality
-export * from './test-config.ts';
+export * from "./test-config.ts";
 
 // Helper function to create a stub that can be used without specific object/method targeting
 export function createStub<T extends (...args: unknown[]) => unknown>(fn?: T) {
@@ -38,7 +38,7 @@ export function createStub<T extends (...args: unknown[]) => unknown>(fn?: T) {
     rejects: (error: unknown) => {
       callResults[index] = Promise.reject(error);
       return mockFn;
-    }
+    },
   });
   mockFn.resolves = (value: unknown) => {
     resolvedValue = value;

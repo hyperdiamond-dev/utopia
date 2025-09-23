@@ -1,6 +1,8 @@
 # Utopia - Research Module System
 
-A comprehensive research study platform built with Deno, Hono, and TypeScript. This system provides sequential module access, user authentication, and progress tracking for research participants.
+A comprehensive research study platform built with Deno, Hono, and TypeScript.
+This system provides sequential module access, user authentication, and progress
+tracking for research participants.
 
 ## 🚀 Quick Start
 
@@ -173,14 +175,14 @@ All tests pass with **zero lint errors** ✅
 
 ### Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `FIREBASE_PROJECT_ID` | Firebase project identifier | Yes |
-| `FIREBASE_CLIENT_EMAIL` | Service account email | Yes |
-| `FIREBASE_PRIVATE_KEY` | Service account private key | Yes |
-| `JWT_SECRET` | Secret for JWT signing | Yes |
-| `DATABASE_URL` | PostgreSQL connection string | Yes |
-| `ALLOWED_ORIGINS` | CORS allowed origins | Yes |
+| Variable                | Description                  | Required |
+| ----------------------- | ---------------------------- | -------- |
+| `FIREBASE_PROJECT_ID`   | Firebase project identifier  | Yes      |
+| `FIREBASE_CLIENT_EMAIL` | Service account email        | Yes      |
+| `FIREBASE_PRIVATE_KEY`  | Service account private key  | Yes      |
+| `JWT_SECRET`            | Secret for JWT signing       | Yes      |
+| `DATABASE_URL`          | PostgreSQL connection string | Yes      |
+| `ALLOWED_ORIGINS`       | CORS allowed origins         | Yes      |
 
 ### Database Schema
 
@@ -220,32 +222,33 @@ The application is designed to run on any Deno-compatible platform:
 
 ### Academic and Non-Profit Use Only
 
-This software is licensed for academic and non-profit use only. Any commercial use, including but not limited to:
+This software is licensed for academic and non-profit use only. Any commercial
+use, including but not limited to:
 
 - Using this software in commercial products or services
 - Selling access to this software or derivatives
 - Using this software for revenue-generating activities
 - Incorporating this software into proprietary commercial systems
 
-is strictly prohibited without explicit written permission from the copyright holders.
+is strictly prohibited without explicit written permission from the copyright
+holders.
 
 ### Permitted Uses
 
-✅ **Academic research and education**
-✅ **Non-profit organizations and initiatives**
-✅ **Open source projects with compatible licenses**
-✅ **Personal learning and experimentation**
+✅ **Academic research and education** ✅ **Non-profit organizations and
+initiatives** ✅ **Open source projects with compatible licenses** ✅ **Personal
+learning and experimentation**
 
 ### Prohibited Uses
 
-❌ **Commercial products or services**
-❌ **Revenue-generating activities**
-❌ **Proprietary software integration**
-❌ **Selling or licensing derivatives**
+❌ **Commercial products or services** ❌ **Revenue-generating activities** ❌
+**Proprietary software integration** ❌ **Selling or licensing derivatives**
 
 For commercial licensing inquiries, please contact the project maintainers.
 
-**Copyright Notice:** This project contains confidential and proprietary information. Unauthorized reproduction, distribution, or commercial use is strictly prohibited.
+**Copyright Notice:** This project contains confidential and proprietary
+information. Unauthorized reproduction, distribution, or commercial use is
+strictly prohibited.
 
 ---
 

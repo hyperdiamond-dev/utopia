@@ -27,7 +27,7 @@ paths:
       tags:
         - System
       responses:
-        '200':
+        "200":
           description: API is healthy
           content:
             application/json:
@@ -49,18 +49,18 @@ paths:
       tags:
         - Authentication
       responses:
-        '200':
+        "200":
           description: Anonymous user created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CreateAnonymousUserResponse'
-        '500':
+                $ref: "#/components/schemas/CreateAnonymousUserResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/auth/login:
     post:
@@ -73,26 +73,26 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              $ref: "#/components/schemas/LoginRequest"
       responses:
-        '200':
+        "200":
           description: Login successful
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
-        '400':
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
           description: Bad request - invalid input
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
           description: Unauthorized - invalid credentials
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/profile:
     get:
@@ -103,24 +103,24 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: User profile retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProfileResponse'
-        '401':
+                $ref: "#/components/schemas/ProfileResponse"
+        "401":
           description: Unauthorized - invalid or missing token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Forbidden - token expired or invalid
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/modules/list:
     get:
@@ -129,18 +129,18 @@ paths:
       tags:
         - Modules
       responses:
-        '200':
+        "200":
           description: Module list retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ModuleListResponse'
-        '500':
+                $ref: "#/components/schemas/ModuleListResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/modules:
     get:
@@ -151,18 +151,18 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Module overview retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ModuleOverviewResponse'
-        '401':
+                $ref: "#/components/schemas/ModuleOverviewResponse"
+        "401":
           description: Unauthorized - invalid or missing token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/modules/current:
     get:
@@ -173,18 +173,18 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Current module retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CurrentModuleResponse'
-        '401':
+                $ref: "#/components/schemas/CurrentModuleResponse"
+        "401":
           description: Unauthorized - invalid or missing token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/modules/{moduleName}:
     get:
@@ -202,30 +202,30 @@ paths:
             enum: [consent, module1, module2, module3, module4]
           description: Name of the module to retrieve
       responses:
-        '200':
+        "200":
           description: Module data retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ModuleDataResponse'
-        '401':
+                $ref: "#/components/schemas/ModuleDataResponse"
+        "401":
           description: Unauthorized - invalid or missing token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Module access denied - complete previous modules first
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ModuleAccessDeniedResponse'
-        '404':
+                $ref: "#/components/schemas/ModuleAccessDeniedResponse"
+        "404":
           description: Module not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/modules/{moduleName}/start:
     post:
@@ -243,24 +243,24 @@ paths:
             enum: [consent, module1, module2, module3, module4]
           description: Name of the module to start
       responses:
-        '200':
+        "200":
           description: Module started successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ModuleStartResponse'
-        '401':
+                $ref: "#/components/schemas/ModuleStartResponse"
+        "401":
           description: Unauthorized - invalid or missing token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Module access denied - complete previous modules first
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ModuleAccessDeniedResponse'
+                $ref: "#/components/schemas/ModuleAccessDeniedResponse"
 
   /api/modules/{moduleName}/save:
     post:
@@ -282,32 +282,32 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ModuleSaveRequest'
+              $ref: "#/components/schemas/ModuleSaveRequest"
       responses:
-        '200':
+        "200":
           description: Progress saved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ModuleSaveResponse'
-        '400':
+                $ref: "#/components/schemas/ModuleSaveResponse"
+        "400":
           description: Bad request - invalid input
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
           description: Unauthorized - invalid or missing token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Module access denied
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ModuleAccessDeniedResponse'
+                $ref: "#/components/schemas/ModuleAccessDeniedResponse"
 
   /api/modules/{moduleName}/complete:
     post:
@@ -329,32 +329,32 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ModuleCompleteRequest'
+              $ref: "#/components/schemas/ModuleCompleteRequest"
       responses:
-        '200':
+        "200":
           description: Module completed successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ModuleCompleteResponse'
-        '400':
+                $ref: "#/components/schemas/ModuleCompleteResponse"
+        "400":
           description: Bad request - invalid submission data or module already completed
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
           description: Unauthorized - invalid or missing token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Module access denied
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ModuleAccessDeniedResponse'
+                $ref: "#/components/schemas/ModuleAccessDeniedResponse"
 
   /api/modules/{moduleName}/responses:
     get:
@@ -372,24 +372,24 @@ paths:
             enum: [consent, module1, module2, module3, module4]
           description: Name of the module to get responses for
       responses:
-        '200':
+        "200":
           description: Module responses retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ModuleResponsesResponse'
-        '401':
+                $ref: "#/components/schemas/ModuleResponsesResponse"
+        "401":
           description: Unauthorized - invalid or missing token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Module access denied
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ModuleAccessDeniedResponse'
+                $ref: "#/components/schemas/ModuleAccessDeniedResponse"
 
   /api/modules/progress/stats:
     get:
@@ -400,18 +400,18 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Progress statistics retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProgressStatsResponse'
-        '401':
+                $ref: "#/components/schemas/ProgressStatsResponse"
+        "401":
           description: Unauthorized - invalid or missing token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
 components:
   securitySchemes:
@@ -625,11 +625,11 @@ components:
 
     ModuleWithProgress:
       allOf:
-        - $ref: '#/components/schemas/Module'
+        - $ref: "#/components/schemas/Module"
         - type: object
           properties:
             user_progress:
-              $ref: '#/components/schemas/ModuleProgress'
+              $ref: "#/components/schemas/ModuleProgress"
             accessible:
               type: boolean
               description: Whether the user can access this module
@@ -639,7 +639,7 @@ components:
       type: object
       properties:
         currentModule:
-          $ref: '#/components/schemas/Module'
+          $ref: "#/components/schemas/Module"
         completedModules:
           type: array
           items:
@@ -653,7 +653,7 @@ components:
           description: Names of accessible modules
           example: ["consent", "module1", "module2"]
         nextModule:
-          $ref: '#/components/schemas/Module'
+          $ref: "#/components/schemas/Module"
         progressPercentage:
           type: integer
           description: Overall completion percentage
@@ -668,7 +668,7 @@ components:
         modules:
           type: array
           items:
-            $ref: '#/components/schemas/Module'
+            $ref: "#/components/schemas/Module"
           description: List of all available modules
 
     ModuleSaveRequest:
@@ -715,9 +715,9 @@ components:
         modules:
           type: array
           items:
-            $ref: '#/components/schemas/ModuleWithProgress'
+            $ref: "#/components/schemas/ModuleWithProgress"
         navigation:
-          $ref: '#/components/schemas/NavigationState'
+          $ref: "#/components/schemas/NavigationState"
         progress:
           type: object
           properties:
@@ -735,9 +735,9 @@ components:
       type: object
       properties:
         current_module:
-          $ref: '#/components/schemas/Module'
+          $ref: "#/components/schemas/Module"
         progress:
-          $ref: '#/components/schemas/ModuleProgress'
+          $ref: "#/components/schemas/ModuleProgress"
         accessible:
           type: boolean
           example: true
@@ -759,9 +759,9 @@ components:
         - can_review
       properties:
         module:
-          $ref: '#/components/schemas/Module'
+          $ref: "#/components/schemas/Module"
         progress:
-          $ref: '#/components/schemas/ModuleProgress'
+          $ref: "#/components/schemas/ModuleProgress"
         accessible:
           type: boolean
           example: true
@@ -830,7 +830,7 @@ components:
           format: date-time
           example: "2025-08-17T11:30:00Z"
         next_module:
-          $ref: '#/components/schemas/Module'
+          $ref: "#/components/schemas/Module"
         progress_stats:
           type: object
           properties:
@@ -894,7 +894,7 @@ components:
           type: integer
           example: 40
         navigation:
-          $ref: '#/components/schemas/NavigationState'
+          $ref: "#/components/schemas/NavigationState"
 
     ModuleAccessDeniedResponse:
       type: object
@@ -928,4 +928,4 @@ tags:
     description: Sequential module progression and management
 
 security:
-  - {}  # Most endpoints are public
+  - {} # Most endpoints are public

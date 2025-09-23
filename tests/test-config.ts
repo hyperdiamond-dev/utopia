@@ -1,27 +1,40 @@
 // Test configuration and utilities
-import { assertEquals, assertExists, assertRejects, assertThrows } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { describe, it, beforeEach, afterEach, beforeAll, afterAll } from "https://deno.land/std@0.224.0/testing/bdd.ts";
-import { spy, stub, restore } from "https://deno.land/std@0.224.0/testing/mock.ts";
-
-// Re-export testing utilities for convenience
-export {
+import {
   assertEquals,
   assertExists,
   assertRejects,
   assertThrows,
-  describe,
-  it,
-  beforeEach,
+} from "@std/assert";
+import {
+  afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
+  describe,
+  it,
+} from "@std/testing/bdd";
+import { restore, spy, stub } from "@std/testing/mock";
+
+// Re-export testing utilities for convenience
+export {
   afterAll,
+  afterEach,
+  assertEquals,
+  assertExists,
+  assertRejects,
+  assertThrows,
+  beforeAll,
+  beforeEach,
+  describe,
+  it,
+  restore,
   spy,
   stub,
-  restore,
 };
 
 // Test database configuration
-export const TEST_DATABASE_URL = "postgresql://test:test@localhost:5432/test_utopia";
+export const TEST_DATABASE_URL =
+  "postgresql://test:test@localhost:5432/test_utopia";
 
 // Mock environment variables for testing
 export function setupTestEnv() {
@@ -51,10 +64,12 @@ export function restoreEnv(originalEnv: Record<string, string>) {
 
 // Mock SQL client for testing
 export class MockSqlClient {
-  private queries: Array<{ query: string; params: unknown[]; result: unknown }> = [];
+  private queries: Array<
+    { query: string; params: unknown[]; result: unknown }
+  > = [];
 
   query(query: string, ..._params: unknown[]) {
-    const mockResult = this.queries.find(q =>
+    const mockResult = this.queries.find((q) =>
       q.query.includes(query.toLowerCase()) ||
       query.toLowerCase().includes(q.query.toLowerCase())
     );
@@ -64,7 +79,7 @@ export class MockSqlClient {
 
   // Template literal function to match SQL template usage
   __call__(strings: TemplateStringsArray, ...values: unknown[]) {
-    const query = strings.join('');
+    const query = strings.join("");
     return this.query(query, ...values);
   }
 
@@ -85,7 +100,9 @@ export class MockSqlClient {
 }
 
 // Helper to create test users
-export function createTestUser(overrides: Partial<Record<string, unknown>> = {}) {
+export function createTestUser(
+  overrides: Partial<Record<string, unknown>> = {},
+) {
   return {
     id: 1,
     uuid: "user_test-uuid",
@@ -99,7 +116,9 @@ export function createTestUser(overrides: Partial<Record<string, unknown>> = {})
 }
 
 // Helper to create test modules
-export function createTestModule(overrides: Partial<Record<string, unknown>> = {}) {
+export function createTestModule(
+  overrides: Partial<Record<string, unknown>> = {},
+) {
   return {
     id: 1,
     name: "test-module",
@@ -114,7 +133,9 @@ export function createTestModule(overrides: Partial<Record<string, unknown>> = {
 }
 
 // Helper to create test module progress
-export function createTestModuleProgress(overrides: Partial<Record<string, unknown>> = {}) {
+export function createTestModuleProgress(
+  overrides: Partial<Record<string, unknown>> = {},
+) {
   return {
     id: 1,
     user_id: 1,
