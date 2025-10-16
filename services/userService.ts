@@ -121,6 +121,48 @@ export class UserService {
     }
   }
 
+  static async updatePassword(
+    uuid: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      // Fetch user from Firebase
+      const userRecord = await auth.getUser(uuid);
+
+      if (!userRecord || !userRecord.customClaims) {
+        return { success: false, message: "User not found" };
+      }
+
+      const claims = userRecord.customClaims;
+
+      // Check if account has expired
+      if (claims.expiresAt && new Date(claims.expiresAt) < new Date()) {
+        return { success: false, message: "Account has expired" };
+      }
+
+      // Verify current password
+      const isValid = await bcrypt.compare(currentPassword, claims.password);
+      if (!isValid) {
+        return { success: false, message: "Invalid credentials" };
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+      // Update custom claims with new password
+      await auth.setCustomUserClaims(userRecord.uid, {
+        ...claims,
+        password: hashedPassword,
+      });
+
+      return { success: true, message: "Password updated successfully" };
+    } catch (error) {
+      console.error("Error updating password:", error);
+      return { success: false, message: "Failed to update password" };
+    }
+  }
+
   private static async aliasExists(alias: string): Promise<boolean> {
     try {
       // Check if alias exists in Firebase custom claims
