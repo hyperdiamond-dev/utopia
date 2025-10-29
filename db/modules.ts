@@ -136,6 +136,14 @@ export class ModuleRepository {
       );
     }
 
+    // Check if module is already completed (read-only)
+    const existingProgress = await this.getUserModuleProgress(userId, moduleId);
+    if (existingProgress?.status === "COMPLETED") {
+      throw new Error(
+        "Module is read-only - completed modules cannot be restarted",
+      );
+    }
+
     // Insert or update progress
     const result = await sql`
       INSERT INTO terminal_utopia.user_module_progress (user_id, module_id, status, started_at)
@@ -189,6 +197,14 @@ export class ModuleRepository {
     moduleId: number,
     responseData: unknown,
   ): Promise<UserModuleProgress | null> {
+    // Check if module is already completed (read-only)
+    const existingProgress = await this.getUserModuleProgress(userId, moduleId);
+    if (existingProgress?.status === "COMPLETED") {
+      throw new Error(
+        "Module is read-only - completed modules cannot be modified",
+      );
+    }
+
     const result = await sql`
       UPDATE terminal_utopia.user_module_progress
       SET response_data = ${JSON.stringify(responseData)}, updated_at = NOW()

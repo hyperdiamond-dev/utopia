@@ -5,7 +5,7 @@ import { ModuleService } from "../services/moduleService.ts";
 
 export type ModuleContext = {
   Variables: {
-    user?: { uuid: string, id?: string; name: string };
+    user?: { uuid: string; id?: string; name: string };
     userRecord?: User;
     moduleAccess?: {
       moduleName: string;
@@ -122,6 +122,47 @@ export const moduleCompletionMiddleware = createMiddleware(async (c, next) => {
     return c.json({ error: "Failed to validate module completion" }, 500);
   }
 });
+
+/**
+ * Middleware to prevent modifications to completed modules
+ * Ensures modules are read-only after completion
+ */
+export const moduleNotCompletedMiddleware = createMiddleware(
+  async (c, next) => {
+    const userRecord = c.get("userRecord");
+    const moduleAccess = c.get("moduleAccess");
+
+    if (!userRecord || !moduleAccess) {
+      return c.json({ error: "Module access validation required" }, 400);
+    }
+
+    try {
+      // Get module data to check completion status
+      const moduleData = await ModuleService.getModuleForUser(
+        userRecord.id,
+        moduleAccess.moduleName,
+      );
+
+      if (!moduleData) {
+        return c.json({ error: "Module not found" }, 404);
+      }
+
+      // Check if module is already completed
+      if (moduleData.isCompleted) {
+        return c.json({
+          error: "Module is read-only",
+          message:
+            "This module has been completed and can no longer be modified. Completed modules are read-only.",
+        }, 403);
+      }
+
+      await next();
+    } catch (_error) {
+      console.error("Module completion check failed:", _error);
+      return c.json({ error: "Failed to validate module status" }, 500);
+    }
+  },
+);
 
 /**
  * Middleware for read-only access to completed modules

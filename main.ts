@@ -12,7 +12,7 @@ import { modules } from "./routes/modules.ts";
 
 interface AppContext extends Env {
   Variables: {
-    user?: { uuid: string, id?: string; name: string };
+    user?: { uuid: string; id?: string; name: string };
   };
 }
 
@@ -24,9 +24,12 @@ app.use("*", secureHeaders());
 app.use("*", globalRateLimit); // Apply global rate limiting
 
 // Enhanced logging for debugging
-app.use("*", logger((message, ...rest) => {
-  console.log(`[${new Date().toISOString()}] ${message}`, ...rest);
-}));
+app.use(
+  "*",
+  logger((message, ...rest) => {
+    console.log(`[${new Date().toISOString()}] ${message}`, ...rest);
+  }),
+);
 
 // Debug middleware to log request details
 app.use("*", async (c, next) => {
@@ -34,11 +37,15 @@ app.use("*", async (c, next) => {
   console.log(`\n� === DEBUG INFO ===`);
   console.log(`� ${c.req.method} ${c.req.url}`);
   console.log(`🌐 User-Agent: ${c.req.header("user-agent") || "Unknown"}`);
-  console.log(`� Authorization: ${c.req.header("authorization") ? "Present" : "Missing"}`);
-  console.log(`� Content-Type: ${c.req.header("content-type") || "Not specified"}`);
-  
+  console.log(
+    `� Authorization: ${c.req.header("authorization") ? "Present" : "Missing"}`,
+  );
+  console.log(
+    `� Content-Type: ${c.req.header("content-type") || "Not specified"}`,
+  );
+
   await next();
-  
+
   const ms = Date.now() - start;
   console.log(`📤 Response: ${c.res.status} (${ms}ms)`);
   console.log(`🔍 === END DEBUG ===\n`);
