@@ -9,6 +9,8 @@ export interface Module {
   description: string | null;
   sequence_order: number;
   is_active: boolean;
+  requires_all_submodules: boolean;
+  allows_branching: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -173,6 +175,18 @@ export class ModuleRepository {
       );
     }
 
+    // Check if all required submodules are completed (if module has submodules)
+    const module = await this.getModuleById(moduleId);
+    if (module?.requires_all_submodules) {
+      const allSubmodulesComplete = await this
+        .areAllRequiredSubmodulesCompleted(userId, moduleId);
+      if (!allSubmodulesComplete) {
+        throw new Error(
+          "Cannot complete module - all required submodules must be completed first",
+        );
+      }
+    }
+
     const result = await sql`
       INSERT INTO terminal_utopia.user_module_progress (user_id, module_id, status, started_at, completed_at, response_data)
       VALUES (${userId}, ${moduleId}, 'COMPLETED', NOW(), NOW(), ${
@@ -189,6 +203,19 @@ export class ModuleRepository {
     `;
 
     return result[0] as UserModuleProgress;
+  }
+
+  // Check if all required submodules are completed for a module
+  async areAllRequiredSubmodulesCompleted(
+    userId: number,
+    moduleId: number,
+  ): Promise<boolean> {
+    // Import is done here to avoid circular dependency
+    const { submoduleRepository } = await import("./submodules.ts");
+    return await submoduleRepository.areAllRequiredSubmodulesCompleted(
+      userId,
+      moduleId,
+    );
   }
 
   // Update module response data without completing

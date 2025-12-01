@@ -36,3 +36,4 @@ package-lock.json
 
 # Misc
 questionnaire.md
+./utopia/.claude/settings.local.json

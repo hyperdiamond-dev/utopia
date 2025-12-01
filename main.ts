@@ -8,7 +8,10 @@ import { secureHeaders } from "hono/secure-headers";
 import { authMiddleware } from "./middleware/auth.ts";
 import { globalRateLimit } from "./middleware/rateLimit.ts";
 import { auth } from "./routes/auth.ts";
+import { consent } from "./routes/consent.ts";
 import { modules } from "./routes/modules.ts";
+import submodules from "./routes/submodules.ts";
+import questions from "./routes/questions.ts";
 
 interface AppContext extends Env {
   Variables: {
@@ -62,8 +65,17 @@ app.use(
 // Auth routes (public)
 app.route("/api/auth", auth);
 
+// Consent routes (protected)
+app.route("/api/consent", consent);
+
 // Module routes (protected)
 app.route("/api/modules", modules);
+
+// Submodule routes (protected) - nested under modules
+app.route("/api/modules", submodules);
+
+// Question routes (protected)
+app.route("/api", questions);
 
 // Protected routes example
 app.get("/api/profile", authMiddleware, (c) => {
