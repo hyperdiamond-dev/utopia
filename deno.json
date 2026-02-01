@@ -18,6 +18,8 @@
   },
   "tasks": {
     "start": "deno run --allow-net --allow-read --allow-write --allow-env main.ts",
+    "migrate": "deno run --allow-net --allow-read --allow-env db/init.ts migrate",
+    "seed": "deno run --allow-net --allow-read --allow-env db/seed.ts",
     "debug": "deno run --inspect-brk --allow-net --allow-read --allow-write --allow-env main.ts",
     "debug-wait": "deno run --inspect-wait --allow-net --allow-read --allow-write --allow-env main.ts",
     "test": "deno test --allow-all tests/",
@@ -28,8 +30,14 @@
     "test:coverage": "deno test --allow-all --coverage=coverage tests/",
     "coverage": "deno coverage coverage",
     "lint": "deno lint",
+    "lint:fix": "deno lint --fix",
     "fmt": "deno fmt",
-    "check": "deno check main.ts"
+    "fmt:check": "deno fmt --check",
+    "check": "deno check main.ts",
+    "check:all": "deno check **/*.ts",
+    "build": "deno check main.ts && deno lint && deno fmt --check",
+    "ci": "deno fmt --check && deno lint && deno check main.ts && deno test --allow-all tests/",
+    "qa": "deno task fmt && deno task lint:fix && deno task check && deno task test"
   },
   "compilerOptions": {
     "jsx": "precompile",

@@ -1,5 +1,6 @@
 // Debug utilities for the Utopia API
-export const DEBUG = Deno.env.get("DEBUG") === "true" || Deno.env.get("NODE_ENV") === "development";
+export const DEBUG = Deno.env.get("DEBUG") === "true" ||
+  Deno.env.get("NODE_ENV") === "development";
 
 export function debugLog(category: string, ...args: unknown[]) {
   if (DEBUG) {
@@ -7,7 +8,11 @@ export function debugLog(category: string, ...args: unknown[]) {
   }
 }
 
-export function debugError(category: string, error: Error, context?: Record<string, unknown>) {
+export function debugError(
+  category: string,
+  error: Error,
+  context?: Record<string, unknown>,
+) {
   if (DEBUG) {
     console.error(`❌ [${category}] Error:`, error.message);
     console.error(`📍 Stack:`, error.stack);
@@ -17,24 +22,39 @@ export function debugError(category: string, error: Error, context?: Record<stri
   }
 }
 
-export function debugRequest(method: string, url: string, headers: Record<string, string>, body?: unknown) {
+export function debugRequest(
+  method: string,
+  url: string,
+  headers: Record<string, string>,
+  body?: unknown,
+) {
   if (DEBUG) {
     console.log(`🔍 === REQUEST DEBUG ===`);
     console.log(`📥 ${method} ${url}`);
     console.log(`📋 Headers:`, headers);
     if (body) {
-      console.log(`📦 Body:`, typeof body === "string" ? body : JSON.stringify(body, null, 2));
+      console.log(
+        `📦 Body:`,
+        typeof body === "string" ? body : JSON.stringify(body, null, 2),
+      );
     }
     console.log(`🔍 === END REQUEST ===`);
   }
 }
 
-export function debugResponse(status: number, body?: unknown, duration?: number) {
+export function debugResponse(
+  status: number,
+  body?: unknown,
+  duration?: number,
+) {
   if (DEBUG) {
     console.log(`🔍 === RESPONSE DEBUG ===`);
     console.log(`📤 Status: ${status}`);
     if (body) {
-      console.log(`📦 Body:`, typeof body === "string" ? body : JSON.stringify(body, null, 2));
+      console.log(
+        `📦 Body:`,
+        typeof body === "string" ? body : JSON.stringify(body, null, 2),
+      );
     }
     if (duration) {
       console.log(`⏱️ Duration: ${duration}ms`);
@@ -63,9 +83,11 @@ export function debugQuery(query: string, params?: unknown[]) {
 
 // Environment variable checker
 export function checkRequiredEnvVars(vars: string[]) {
-  const missing = vars.filter(varName => !Deno.env.get(varName));
+  const missing = vars.filter((varName) => !Deno.env.get(varName));
   if (missing.length > 0) {
-    console.error(`❌ Missing required environment variables: ${missing.join(", ")}`);
+    console.error(
+      `❌ Missing required environment variables: ${missing.join(", ")}`,
+    );
     return false;
   }
   return true;

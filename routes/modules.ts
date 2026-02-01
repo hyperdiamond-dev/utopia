@@ -6,6 +6,7 @@ import {
   moduleAccessMiddleware,
   moduleCompletionMiddleware,
   ModuleContext,
+  moduleNotCompletedMiddleware,
   moduleReviewMiddleware,
 } from "../middleware/moduleAccess.ts";
 import { ModuleService } from "../services/moduleService.ts";
@@ -180,6 +181,7 @@ modules.post(
   "/:moduleName/start",
   authMiddleware,
   moduleAccessMiddleware,
+  moduleNotCompletedMiddleware,
   async (c) => {
     const userRecord = c.get("userRecord");
     const moduleAccess = c.get("moduleAccess");
@@ -225,6 +227,7 @@ modules.post(
   "/:moduleName/save",
   authMiddleware,
   moduleAccessMiddleware,
+  moduleNotCompletedMiddleware,
   async (c) => {
     const userRecord = c.get("userRecord");
     const moduleAccess = c.get("moduleAccess");

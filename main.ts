@@ -8,11 +8,14 @@ import { secureHeaders } from "hono/secure-headers";
 import { authMiddleware } from "./middleware/auth.ts";
 import { globalRateLimit } from "./middleware/rateLimit.ts";
 import { auth } from "./routes/auth.ts";
+import { consent } from "./routes/consent.ts";
 import { modules } from "./routes/modules.ts";
+import submodules from "./routes/submodules.ts";
+import questions from "./routes/questions.ts";
 
 interface AppContext extends Env {
   Variables: {
-    user?: { uuid: string, id?: string; name: string };
+    user?: { uuid: string; id?: string; name: string };
   };
 }
 
@@ -24,9 +27,12 @@ app.use("*", secureHeaders());
 app.use("*", globalRateLimit); // Apply global rate limiting
 
 // Enhanced logging for debugging
-app.use("*", logger((message, ...rest) => {
-  console.log(`[${new Date().toISOString()}] ${message}`, ...rest);
-}));
+app.use(
+  "*",
+  logger((message, ...rest) => {
+    console.log(`[${new Date().toISOString()}] ${message}`, ...rest);
+  }),
+);
 
 // Debug middleware to log request details
 app.use("*", async (c, next) => {
@@ -34,11 +40,15 @@ app.use("*", async (c, next) => {
   console.log(`\n� === DEBUG INFO ===`);
   console.log(`� ${c.req.method} ${c.req.url}`);
   console.log(`🌐 User-Agent: ${c.req.header("user-agent") || "Unknown"}`);
-  console.log(`� Authorization: ${c.req.header("authorization") ? "Present" : "Missing"}`);
-  console.log(`� Content-Type: ${c.req.header("content-type") || "Not specified"}`);
-  
+  console.log(
+    `� Authorization: ${c.req.header("authorization") ? "Present" : "Missing"}`,
+  );
+  console.log(
+    `� Content-Type: ${c.req.header("content-type") || "Not specified"}`,
+  );
+
   await next();
-  
+
   const ms = Date.now() - start;
   console.log(`📤 Response: ${c.res.status} (${ms}ms)`);
   console.log(`🔍 === END DEBUG ===\n`);
@@ -55,8 +65,17 @@ app.use(
 // Auth routes (public)
 app.route("/api/auth", auth);
 
+// Consent routes (protected)
+app.route("/api/consent", consent);
+
 // Module routes (protected)
 app.route("/api/modules", modules);
+
+// Submodule routes (protected) - nested under modules
+app.route("/api/modules", submodules);
+
+// Question routes (protected)
+app.route("/api", questions);
 
 // Protected routes example
 app.get("/api/profile", authMiddleware, (c) => {

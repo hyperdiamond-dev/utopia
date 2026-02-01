@@ -9,6 +9,8 @@ export interface Module {
   description: string | null;
   sequence_order: number;
   is_active: boolean;
+  requires_all_submodules: boolean;
+  allows_branching: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -136,7 +138,7 @@ export class ModuleRepository {
       );
     }
 
-    // Insert or update progress
+    // Atomic insert/update with WHERE clause to prevent overwriting COMPLETED status
     const result = await sql`
       INSERT INTO terminal_utopia.user_module_progress (user_id, module_id, status, started_at)
       VALUES (${userId}, ${moduleId}, 'IN_PROGRESS', NOW())
@@ -145,8 +147,16 @@ export class ModuleRepository {
         status = 'IN_PROGRESS',
         started_at = COALESCE(user_module_progress.started_at, NOW()),
         updated_at = NOW()
+      WHERE user_module_progress.status != 'COMPLETED'
       RETURNING *
     `;
+
+    // If no rows returned, the module was already COMPLETED
+    if (result.length === 0) {
+      throw new Error(
+        "Module is read-only - completed modules cannot be restarted",
+      );
+    }
 
     return result[0] as UserModuleProgress;
   }
@@ -163,6 +173,18 @@ export class ModuleRepository {
       throw new Error(
         "Module not accessible - complete previous modules first",
       );
+    }
+
+    // Check if all required submodules are completed (if module has submodules)
+    const module = await this.getModuleById(moduleId);
+    if (module?.requires_all_submodules) {
+      const allSubmodulesComplete = await this
+        .areAllRequiredSubmodulesCompleted(userId, moduleId);
+      if (!allSubmodulesComplete) {
+        throw new Error(
+          "Cannot complete module - all required submodules must be completed first",
+        );
+      }
     }
 
     const result = await sql`
@@ -183,20 +205,47 @@ export class ModuleRepository {
     return result[0] as UserModuleProgress;
   }
 
+  // Check if all required submodules are completed for a module
+  async areAllRequiredSubmodulesCompleted(
+    userId: number,
+    moduleId: number,
+  ): Promise<boolean> {
+    // Import is done here to avoid circular dependency
+    const { submoduleRepository } = await import("./submodules.ts");
+    return await submoduleRepository.areAllRequiredSubmodulesCompleted(
+      userId,
+      moduleId,
+    );
+  }
+
   // Update module response data without completing
   async updateModuleResponse(
     userId: number,
     moduleId: number,
     responseData: unknown,
   ): Promise<UserModuleProgress | null> {
+    // Atomic update with status check in WHERE clause to prevent race conditions
     const result = await sql`
       UPDATE terminal_utopia.user_module_progress
       SET response_data = ${JSON.stringify(responseData)}, updated_at = NOW()
-      WHERE user_id = ${userId} AND module_id = ${moduleId}
+      WHERE user_id = ${userId}
+        AND module_id = ${moduleId}
+        AND status != 'COMPLETED'
       RETURNING *
     `;
 
-    return result[0] as UserModuleProgress || null;
+    // If no rows affected, check if it's because module is completed or doesn't exist
+    if (result.length === 0) {
+      const existingProgress = await this.getUserModuleProgress(userId, moduleId);
+      if (existingProgress?.status === "COMPLETED") {
+        throw new Error(
+          "Module is read-only - completed modules cannot be modified",
+        );
+      }
+      return null;
+    }
+
+    return result[0] as UserModuleProgress;
   }
 
   // Get next accessible module for user
