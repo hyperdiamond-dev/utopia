@@ -92,7 +92,6 @@ describe("Response Service", () => {
 
   describe("Response Validation", () => {
     it("should validate true/false responses", () => {
-      const question = createTestQuestion({ question_type: "true_false" });
       const validResponses: ResponseValue[] = [true, false];
       const invalidResponses: ResponseValue[] = ["yes", "no", 1, 0];
 
@@ -120,7 +119,6 @@ describe("Response Service", () => {
     });
 
     it("should validate fill_blank responses as strings", () => {
-      const question = createTestQuestion({ question_type: "fill_blank" });
       const validResponse = "User's answer";
       const invalidResponse = 123;
 
@@ -129,7 +127,6 @@ describe("Response Service", () => {
     });
 
     it("should validate free_form responses as strings", () => {
-      const question = createTestQuestion({ question_type: "free_form" });
       const validResponse =
         "This is a longer free-form response from the user.";
 
@@ -389,10 +386,6 @@ describe("Response Service", () => {
 
   describe("Question Types", () => {
     it("should handle multiple_choice with multiple selections", () => {
-      const question = createTestQuestion({
-        question_type: "multiple_choice",
-        metadata: { options: ["A", "B", "C"], allow_multiple: true },
-      });
 
       const multipleSelections: ResponseValue = ["A", "C"];
 

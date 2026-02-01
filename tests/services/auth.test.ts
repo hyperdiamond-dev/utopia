@@ -119,12 +119,7 @@ describe("Auth Service", () => {
   });
 
   describe("Authentication", () => {
-    it("should reject authentication with incorrect password", async () => {
-      // Simulate bcrypt comparison failure
-      const storedHash =
-        "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G8C.cK3x.example";
-      const wrongPassword = "wrongpassword123";
-
+    it("should reject authentication with incorrect password", () => {
       // In real implementation, bcrypt.compare would return false
       const isValid = false; // Simulated bcrypt.compare result
 

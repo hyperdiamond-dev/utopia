@@ -8,15 +8,13 @@ import {
   assertEquals,
   assertExists,
   beforeEach,
-  createStub,
   createTestJWT,
   createTestModule,
   createTestModuleProgress,
-  createTestUser,
   describe,
   it,
   restoreEnv,
-  setupTestEnv,
+  setupTestEnv
 } from "../test-config-extended.ts";
 
 // Mock request/response helpers
@@ -31,26 +29,6 @@ function createMockRequest(options: {
     path: options.path || "/",
     headers: new Map(Object.entries(options.headers || {})),
     body: options.body,
-  };
-}
-
-function createMockContext(options: {
-  user?: { uuid: string; friendlyAlias: string };
-  userRecord?: { id: number; uuid: string; alias: string };
-  moduleAccess?: { moduleName: string; accessible: boolean };
-} = {}) {
-  const context: Record<string, unknown> = {};
-
-  return {
-    get: (key: string) => context[key] ?? options[key as keyof typeof options],
-    set: (key: string, value: unknown) => {
-      context[key] = value;
-    },
-    req: {
-      json: createStub().resolves({}),
-      header: createStub().resolves(""),
-    },
-    json: createStub(),
   };
 }
 
@@ -128,7 +106,6 @@ describe("Module Routes", () => {
     });
 
     it("should return module overview with progress", () => {
-      const user = createTestUser();
       const modules = [
         { ...createTestModule({ name: "consent" }), user_progress: createTestModuleProgress({ status: "COMPLETED" }), accessible: true },
         { ...createTestModule({ name: "module-1" }), user_progress: createTestModuleProgress({ status: "IN_PROGRESS" }), accessible: true },
@@ -312,10 +289,6 @@ describe("Module Routes", () => {
 
   describe("POST /modules/:moduleName/complete", () => {
     it("should complete module with valid submission", () => {
-      const submissionData = {
-        responses: { q1: "a1", q2: true },
-        metadata: { completed_via: "web" },
-      };
 
       const response = {
         message: "Module completed successfully",
@@ -490,7 +463,6 @@ describe("Module Routes", () => {
 
   describe("Error Handling", () => {
     it("should return 500 for server errors", () => {
-      const error = new Error("Database connection failed");
       const statusCode = 500;
       const response = { error: "Failed to get module overview" };
 
