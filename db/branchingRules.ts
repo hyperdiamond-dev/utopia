@@ -20,7 +20,9 @@ export interface BranchingRule {
   id: number;
   source_module_id: number;
   source_submodule_id: number | null;
-  target_submodule_id: number;
+  source_path_id: number | null;
+  target_submodule_id: number | null;
+  target_path_id: number | null;
   condition_type: ConditionType;
   condition_config: ConditionConfig;
   priority: number;
@@ -42,6 +44,8 @@ export interface ConditionConfig {
 
   // For all_complete / any_complete types
   submodule_ids?: number[];
+  path_ids?: number[];
+  module_ids?: number[];
 
   // Custom condition (advanced)
   custom_condition?: string;
@@ -51,7 +55,8 @@ export interface ConditionConfig {
 
 export interface RuleEvaluationResult {
   rule_id: number;
-  target_submodule_id: number;
+  target_submodule_id: number | null;
+  target_path_id: number | null;
   unlocked: boolean;
   reason?: string;
 }
@@ -129,6 +134,36 @@ export class BranchingRuleRepository {
   }
 
   /**
+   * Get all rules for a source path
+   */
+  async getRulesBySourcePath(pathId: number): Promise<BranchingRule[]> {
+    const result = await sql`
+      SELECT *
+      FROM terminal_utopia.branching_rules
+      WHERE source_path_id = ${pathId}
+      AND is_active = true
+      ORDER BY priority DESC, id ASC
+    `;
+
+    return result as BranchingRule[];
+  }
+
+  /**
+   * Get all rules that target a specific path
+   */
+  async getRulesByTargetPath(pathId: number): Promise<BranchingRule[]> {
+    const result = await sql`
+      SELECT *
+      FROM terminal_utopia.branching_rules
+      WHERE target_path_id = ${pathId}
+      AND is_active = true
+      ORDER BY priority DESC, id ASC
+    `;
+
+    return result as BranchingRule[];
+  }
+
+  /**
    * Get all applicable rules for a module/submodule completion
    */
   async getApplicableRules(
@@ -162,7 +197,7 @@ export class BranchingRuleRepository {
   // ==========================================================================
 
   /**
-   * Evaluate all rules for a given context and return unlocked submodules
+   * Evaluate all rules for a given context and return unlocked submodules/paths
    */
   async evaluateRules(
     userId: number,
@@ -173,12 +208,37 @@ export class BranchingRuleRepository {
     const results: RuleEvaluationResult[] = [];
 
     for (const rule of rules) {
-      const unlocked = await this.evaluateSingleRule(userId, rule);
+      const result = await this.evaluateSingleRule(rule, userId);
       results.push({
         rule_id: rule.id,
         target_submodule_id: rule.target_submodule_id,
-        unlocked,
-        reason: unlocked ? "Condition met" : "Condition not met",
+        target_path_id: rule.target_path_id,
+        unlocked: result.unlocked,
+        reason: result.reason,
+      });
+    }
+
+    return results;
+  }
+
+  /**
+   * Evaluate rules for a path completion context
+   */
+  async evaluatePathRules(
+    userId: number,
+    pathId: number,
+  ): Promise<RuleEvaluationResult[]> {
+    const rules = await this.getRulesBySourcePath(pathId);
+    const results: RuleEvaluationResult[] = [];
+
+    for (const rule of rules) {
+      const result = await this.evaluateSingleRule(rule, userId);
+      results.push({
+        rule_id: rule.id,
+        target_submodule_id: rule.target_submodule_id,
+        target_path_id: rule.target_path_id,
+        unlocked: result.unlocked,
+        reason: result.reason,
       });
     }
 
@@ -187,27 +247,34 @@ export class BranchingRuleRepository {
 
   /**
    * Evaluate a single rule for a user
+   * Returns an object with unlocked status and reason
    */
   async evaluateSingleRule(
-    userId: number,
     rule: BranchingRule,
-  ): Promise<boolean> {
+    userId: number,
+  ): Promise<{ unlocked: boolean; reason: string }> {
     switch (rule.condition_type) {
       case "always":
-        return true;
+        return { unlocked: true, reason: "Always unlock" };
 
-      case "question_answer":
-        return await this.evaluateQuestionAnswer(userId, rule.condition_config);
+      case "question_answer": {
+        const unlocked = await this.evaluateQuestionAnswer(userId, rule.condition_config);
+        return { unlocked, reason: unlocked ? "Question answer matched" : "Question answer did not match" };
+      }
 
-      case "all_complete":
-        return await this.evaluateAllComplete(userId, rule.condition_config);
+      case "all_complete": {
+        const unlocked = await this.evaluateAllComplete(userId, rule.condition_config);
+        return { unlocked, reason: unlocked ? "All items completed" : "Not all items completed" };
+      }
 
-      case "any_complete":
-        return await this.evaluateAnyComplete(userId, rule.condition_config);
+      case "any_complete": {
+        const unlocked = await this.evaluateAnyComplete(userId, rule.condition_config);
+        return { unlocked, reason: unlocked ? "At least one item completed" : "No items completed" };
+      }
 
       default:
         console.warn(`Unknown condition type: ${rule.condition_type}`);
-        return false;
+        return { unlocked: false, reason: `Unknown condition type: ${rule.condition_type}` };
     }
   }
 
@@ -321,57 +388,129 @@ export class BranchingRuleRepository {
 
   /**
    * Evaluate all_complete condition
+   * Supports submodule_ids, path_ids, and module_ids
    */
   private async evaluateAllComplete(
     userId: number,
     config: ConditionConfig,
   ): Promise<boolean> {
-    const submoduleIds = config.submodule_ids;
-    if (!submoduleIds || submoduleIds.length === 0) {
-      console.warn("all_complete condition missing submodule_ids");
+    const submoduleIds = config.submodule_ids || [];
+    const pathIds = config.path_ids || [];
+    const moduleIds = config.module_ids || [];
+
+    if (submoduleIds.length === 0 && pathIds.length === 0 && moduleIds.length === 0) {
+      console.warn("all_complete condition missing submodule_ids, path_ids, or module_ids");
       return false;
     }
 
-    const result = await sql`
-      SELECT COUNT(*) as incomplete_count
-      FROM terminal_utopia.submodules s
-      LEFT JOIN terminal_utopia.user_submodule_progress usp
-        ON s.id = usp.submodule_id AND usp.user_id = ${userId}
-      WHERE s.id = ANY(${submoduleIds})
-      AND (usp.status IS NULL OR usp.status != 'COMPLETED')
-    `;
+    // Check submodules
+    if (submoduleIds.length > 0) {
+      const result = await sql`
+        SELECT COUNT(*) as incomplete_count
+        FROM terminal_utopia.submodules s
+        LEFT JOIN terminal_utopia.user_submodule_progress usp
+          ON s.id = usp.submodule_id AND usp.user_id = ${userId}
+        WHERE s.id = ANY(${submoduleIds})
+        AND (usp.status IS NULL OR usp.status != 'COMPLETED')
+      `;
+      if (parseInt((result[0] as { incomplete_count: string }).incomplete_count, 10) > 0) {
+        return false;
+      }
+    }
 
-    return parseInt(
-      (result[0] as { incomplete_count: string }).incomplete_count,
-      10,
-    ) === 0;
+    // Check paths
+    if (pathIds.length > 0) {
+      const result = await sql`
+        SELECT COUNT(*) as incomplete_count
+        FROM terminal_utopia.paths p
+        LEFT JOIN terminal_utopia.user_path_progress upp
+          ON p.id = upp.path_id AND upp.user_id = ${userId}
+        WHERE p.id = ANY(${pathIds})
+        AND (upp.status IS NULL OR upp.status != 'COMPLETED')
+      `;
+      if (parseInt((result[0] as { incomplete_count: string }).incomplete_count, 10) > 0) {
+        return false;
+      }
+    }
+
+    // Check modules
+    if (moduleIds.length > 0) {
+      const result = await sql`
+        SELECT COUNT(*) as incomplete_count
+        FROM terminal_utopia.modules m
+        LEFT JOIN terminal_utopia.user_module_progress ump
+          ON m.id = ump.module_id AND ump.user_id = ${userId}
+        WHERE m.id = ANY(${moduleIds})
+        AND (ump.status IS NULL OR ump.status != 'COMPLETED')
+      `;
+      if (parseInt((result[0] as { incomplete_count: string }).incomplete_count, 10) > 0) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   /**
    * Evaluate any_complete condition
+   * Supports submodule_ids, path_ids, and module_ids
    */
   private async evaluateAnyComplete(
     userId: number,
     config: ConditionConfig,
   ): Promise<boolean> {
-    const submoduleIds = config.submodule_ids;
-    if (!submoduleIds || submoduleIds.length === 0) {
-      console.warn("any_complete condition missing submodule_ids");
+    const submoduleIds = config.submodule_ids || [];
+    const pathIds = config.path_ids || [];
+    const moduleIds = config.module_ids || [];
+
+    if (submoduleIds.length === 0 && pathIds.length === 0 && moduleIds.length === 0) {
+      console.warn("any_complete condition missing submodule_ids, path_ids, or module_ids");
       return false;
     }
 
-    const result = await sql`
-      SELECT COUNT(*) as complete_count
-      FROM terminal_utopia.user_submodule_progress
-      WHERE user_id = ${userId}
-      AND submodule_id = ANY(${submoduleIds})
-      AND status = 'COMPLETED'
-    `;
+    // Check submodules
+    if (submoduleIds.length > 0) {
+      const result = await sql`
+        SELECT COUNT(*) as complete_count
+        FROM terminal_utopia.user_submodule_progress
+        WHERE user_id = ${userId}
+        AND submodule_id = ANY(${submoduleIds})
+        AND status = 'COMPLETED'
+      `;
+      if (parseInt((result[0] as { complete_count: string }).complete_count, 10) > 0) {
+        return true;
+      }
+    }
 
-    return parseInt(
-      (result[0] as { complete_count: string }).complete_count,
-      10,
-    ) > 0;
+    // Check paths
+    if (pathIds.length > 0) {
+      const result = await sql`
+        SELECT COUNT(*) as complete_count
+        FROM terminal_utopia.user_path_progress
+        WHERE user_id = ${userId}
+        AND path_id = ANY(${pathIds})
+        AND status = 'COMPLETED'
+      `;
+      if (parseInt((result[0] as { complete_count: string }).complete_count, 10) > 0) {
+        return true;
+      }
+    }
+
+    // Check modules
+    if (moduleIds.length > 0) {
+      const result = await sql`
+        SELECT COUNT(*) as complete_count
+        FROM terminal_utopia.user_module_progress
+        WHERE user_id = ${userId}
+        AND module_id = ANY(${moduleIds})
+        AND status = 'COMPLETED'
+      `;
+      if (parseInt((result[0] as { complete_count: string }).complete_count, 10) > 0) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -402,8 +541,42 @@ export class BranchingRuleRepository {
 
     // Check if ANY rule unlocks this submodule
     for (const rule of rules) {
-      const unlocked = await this.evaluateSingleRule(userId, rule);
-      if (unlocked) return true;
+      const result = await this.evaluateSingleRule(rule, userId);
+      if (result.unlocked) return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Get list of path IDs that should be unlocked for a user based on path completion
+   */
+  async getUnlockedPaths(
+    userId: number,
+    sourcePathId: number,
+  ): Promise<number[]> {
+    const results = await this.evaluatePathRules(userId, sourcePathId);
+    return results
+      .filter((r) => r.unlocked && r.target_path_id)
+      .map((r) => r.target_path_id as number);
+  }
+
+  /**
+   * Check if a specific path is unlocked by branching rules
+   */
+  async isPathUnlockedByRules(
+    userId: number,
+    pathId: number,
+  ): Promise<boolean> {
+    const rules = await this.getRulesByTargetPath(pathId);
+
+    // If no rules target this path, it's not controlled by branching
+    if (rules.length === 0) return true;
+
+    // Check if ANY rule unlocks this path
+    for (const rule of rules) {
+      const result = await this.evaluateSingleRule(rule, userId);
+      if (result.unlocked) return true;
     }
 
     return false;
@@ -423,7 +596,9 @@ export class BranchingRuleRepository {
       INSERT INTO terminal_utopia.branching_rules (
         source_module_id,
         source_submodule_id,
+        source_path_id,
         target_submodule_id,
+        target_path_id,
         condition_type,
         condition_config,
         priority
@@ -431,7 +606,9 @@ export class BranchingRuleRepository {
       VALUES (
         ${data.source_module_id},
         ${data.source_submodule_id},
+        ${data.source_path_id},
         ${data.target_submodule_id},
+        ${data.target_path_id},
         ${data.condition_type},
         ${JSON.stringify(data.condition_config)},
         ${data.priority}
@@ -462,8 +639,14 @@ export class BranchingRuleRepository {
     if (data.source_submodule_id !== undefined) {
       updateData.source_submodule_id = data.source_submodule_id;
     }
+    if (data.source_path_id !== undefined) {
+      updateData.source_path_id = data.source_path_id;
+    }
     if (data.target_submodule_id !== undefined) {
       updateData.target_submodule_id = data.target_submodule_id;
+    }
+    if (data.target_path_id !== undefined) {
+      updateData.target_path_id = data.target_path_id;
     }
     if (data.condition_type !== undefined) {
       updateData.condition_type = data.condition_type;
@@ -583,11 +766,73 @@ export class BranchingRuleRepository {
     return this.createRule({
       source_module_id: sourceModuleId,
       source_submodule_id: sourceSubmoduleId,
+      source_path_id: null,
       target_submodule_id: targetSubmoduleId,
+      target_path_id: null,
       condition_type: "always",
       condition_config: {},
       priority,
     });
+  }
+
+  /**
+   * Create a path-to-path rule that unlocks a target path when a source path is completed
+   */
+  createPathRule(
+    sourcePathId: number,
+    targetPathId: number,
+    conditionType: ConditionType = "always",
+    conditionConfig: ConditionConfig = {},
+    priority: number = 0,
+  ): Promise<BranchingRule> {
+    return this.createRule({
+      source_module_id: 0, // Required field, set to 0 for path-only rules
+      source_submodule_id: null,
+      source_path_id: sourcePathId,
+      target_submodule_id: null,
+      target_path_id: targetPathId,
+      condition_type: conditionType,
+      condition_config: conditionConfig,
+      priority,
+    });
+  }
+
+  /**
+   * Create a question-based path rule
+   */
+  createQuestionPathRule(
+    sourcePathId: number,
+    targetPathId: number,
+    questionId: number,
+    expectedValue: ResponseValue,
+    operator: "equals" | "not_equals" | "contains" | "greater_than" | "less_than" = "equals",
+    priority: number = 0,
+  ): Promise<BranchingRule> {
+    return this.createPathRule(
+      sourcePathId,
+      targetPathId,
+      "question_answer",
+      {
+        question_id: questionId,
+        expected_value: expectedValue,
+        operator,
+      },
+      priority,
+    );
+  }
+
+  /**
+   * Delete all rules for a path (both source and target)
+   */
+  async deleteRulesForPath(pathId: number): Promise<number> {
+    const result = await sql`
+      UPDATE terminal_utopia.branching_rules
+      SET is_active = false
+      WHERE source_path_id = ${pathId}
+         OR target_path_id = ${pathId}
+    `;
+
+    return (result as unknown as { count: number }).count;
   }
 }
 
