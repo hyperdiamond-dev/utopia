@@ -4,7 +4,7 @@ import { rateLimiter } from "hono-rate-limiter";
 // Global rate limiter configuration using default memory store
 export const globalRateLimit = rateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 100, // Limit each IP to 100 requests per windowMs
+  limit: 1000, // Limit each IP to 1000 requests per windowMs
   message: {
     error: "Too many requests from this IP, please try again later.",
     retryAfter: 15 * 60, // 15 minutes in seconds

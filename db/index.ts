@@ -10,6 +10,7 @@ export {
 } from "./consentVersions.ts";
 export { UserRepository, userRepository } from "./users.ts";
 export { ModuleRepository, moduleRepository } from "./modules.ts";
+export { PathRepository, pathRepository } from "./paths.ts";
 
 // Types
 export type { Audit, AuditDetails, EventType } from "./audits.ts";
@@ -25,6 +26,15 @@ export type {
   ModuleWithProgress,
   UserModuleProgress,
 } from "./modules.ts";
+export type {
+  Path,
+  PathModule,
+  PathStatus,
+  PathWithModules,
+  PathWithProgress,
+  QuestionPath,
+  UserPathProgress,
+} from "./paths.ts";
 
 // Migration runner
 export { MigrationRunner, migrationRunner } from "./migrationRunner.ts";

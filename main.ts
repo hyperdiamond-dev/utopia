@@ -10,6 +10,7 @@ import { globalRateLimit } from "./middleware/rateLimit.ts";
 import { auth } from "./routes/auth.ts";
 import { consent } from "./routes/consent.ts";
 import { modules } from "./routes/modules.ts";
+import { paths } from "./routes/paths.ts";
 import submodules from "./routes/submodules.ts";
 import questions from "./routes/questions.ts";
 
@@ -70,6 +71,9 @@ app.route("/api/consent", consent);
 
 // Module routes (protected)
 app.route("/api/modules", modules);
+
+// Path routes (protected)
+app.route("/api/paths", paths);
 
 // Submodule routes (protected) - nested under modules
 app.route("/api/modules", submodules);
