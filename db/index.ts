@@ -11,6 +11,10 @@ export {
 export { UserRepository, userRepository } from "./users.ts";
 export { ModuleRepository, moduleRepository } from "./modules.ts";
 export { PathRepository, pathRepository } from "./paths.ts";
+export {
+  FileUploadRepository,
+  fileUploadRepository,
+} from "./fileUploads.ts";
 
 // Types
 export type { Audit, AuditDetails, EventType } from "./audits.ts";
@@ -35,6 +39,7 @@ export type {
   QuestionPath,
   UserPathProgress,
 } from "./paths.ts";
+export type { CreateFileUploadData, FileUpload } from "./fileUploads.ts";
 
 // Migration runner
 export { MigrationRunner, migrationRunner } from "./migrationRunner.ts";

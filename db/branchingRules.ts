@@ -523,8 +523,8 @@ export class BranchingRuleRepository {
   ): Promise<number[]> {
     const results = await this.evaluateRules(userId, moduleId, submoduleId);
     return results
-      .filter((r) => r.unlocked)
-      .map((r) => r.target_submodule_id);
+      ?.filter((r) => r.unlocked)
+      ?.map((r) => r.target_submodule_id) ?? [] as number[];
   }
 
   /**
