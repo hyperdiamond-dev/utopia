@@ -14,6 +14,7 @@ import { paths } from "./routes/paths.ts";
 import submodules from "./routes/submodules.ts";
 import questions from "./routes/questions.ts";
 import { uploads } from "./routes/upload.ts";
+import { content } from "./routes/content.ts";
 
 interface AppContext extends Env {
   Variables: {
@@ -84,6 +85,9 @@ app.route("/api", questions);
 
 // Upload routes (protected)
 app.route("/api/upload", uploads);
+
+// Content routes (media content for modules/submodules)
+app.route("/api/content", content);
 
 // Protected routes example
 app.get("/api/profile", authMiddleware, (c) => {

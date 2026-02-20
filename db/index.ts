@@ -15,6 +15,10 @@ export {
   FileUploadRepository,
   fileUploadRepository,
 } from "./fileUploads.ts";
+export {
+  ModuleContentRepository,
+  moduleContentRepository,
+} from "./moduleContent.ts";
 
 // Types
 export type { Audit, AuditDetails, EventType } from "./audits.ts";
@@ -40,6 +44,11 @@ export type {
   UserPathProgress,
 } from "./paths.ts";
 export type { CreateFileUploadData, FileUpload } from "./fileUploads.ts";
+export type {
+  ContentType,
+  CreateModuleContentData,
+  ModuleContent,
+} from "./moduleContent.ts";
 
 // Migration runner
 export { MigrationRunner, migrationRunner } from "./migrationRunner.ts";
