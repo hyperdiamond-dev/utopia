@@ -11,14 +11,14 @@ import {
   assertEquals,
   assertExists,
   beforeEach,
+  createTestModule,
+  createTestModuleProgress,
   describe,
   it,
   restore,
-  setupTestEnv,
   restoreEnv,
+  setupTestEnv,
   stubMethod as stub,
-  createTestModule,
-  createTestModuleProgress,
 } from "../test-config.ts";
 
 import { z } from "zod";
@@ -27,7 +27,9 @@ import { z } from "zod";
 setupTestEnv();
 
 const { ModuleService } = await import("../../services/moduleService.ts");
-const { auditRepository, moduleRepository, userRepository } = await import("../../db/index.ts");
+const { auditRepository, moduleRepository, userRepository } = await import(
+  "../../db/index.ts"
+);
 
 // Recreate the Zod schemas used in routes/modules.ts (not exported)
 const moduleResponseSchema = z.object({
@@ -157,11 +159,24 @@ describe("Response Data Flow Through ModuleService", () => {
       const progress = createTestModuleProgress({ status: "IN_PROGRESS" });
       const responseData = { q1: "answer1", q2: true };
 
-      stub(moduleRepository, "getModuleByName", () => Promise.resolve(testModule));
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(testModule),
+      );
       stub(moduleRepository, "isModuleAccessible", () => Promise.resolve(true));
-      stub(moduleRepository, "getUserModuleProgress", () => Promise.resolve(progress));
-      const updateStub = stub(moduleRepository, "updateModuleResponse", () =>
-        Promise.resolve(createTestModuleProgress({ response_data: responseData }))
+      stub(
+        moduleRepository,
+        "getUserModuleProgress",
+        () => Promise.resolve(progress),
+      );
+      const updateStub = stub(
+        moduleRepository,
+        "updateModuleResponse",
+        () =>
+          Promise.resolve(
+            createTestModuleProgress({ response_data: responseData }),
+          ),
       );
 
       await ModuleService.saveModuleProgress(1, "module-1", responseData);
@@ -171,7 +186,10 @@ describe("Response Data Flow Through ModuleService", () => {
       assertEquals(updateStub.calls[0].args[1], 2); // moduleId
 
       const savedData = updateStub.calls[0].args[2] as Record<string, unknown>;
-      assertEquals((savedData.responses as Record<string, unknown>).q1, "answer1");
+      assertEquals(
+        (savedData.responses as Record<string, unknown>).q1,
+        "answer1",
+      );
       assertEquals((savedData.responses as Record<string, unknown>).q2, true);
       assertExists(savedData.last_saved);
       // last_saved should be an ISO string
@@ -188,11 +206,24 @@ describe("Response Data Flow Through ModuleService", () => {
         numeric_field: 7,
       };
 
-      stub(moduleRepository, "getModuleByName", () => Promise.resolve(testModule));
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(testModule),
+      );
       stub(moduleRepository, "isModuleAccessible", () => Promise.resolve(true));
-      stub(moduleRepository, "getUserModuleProgress", () => Promise.resolve(progress));
-      const updateStub = stub(moduleRepository, "updateModuleResponse", () =>
-        Promise.resolve(createTestModuleProgress({ response_data: complexResponses }))
+      stub(
+        moduleRepository,
+        "getUserModuleProgress",
+        () => Promise.resolve(progress),
+      );
+      const updateStub = stub(
+        moduleRepository,
+        "updateModuleResponse",
+        () =>
+          Promise.resolve(
+            createTestModuleProgress({ response_data: complexResponses }),
+          ),
       );
 
       await ModuleService.saveModuleProgress(1, "module-1", complexResponses);
@@ -208,49 +239,97 @@ describe("Response Data Flow Through ModuleService", () => {
 
   describe("completeModule response data", () => {
     it("should pass submission data with completed_at timestamp to repository", async () => {
-      const testModule = createTestModule({ id: 2, name: "module-1", sequence_order: 2 });
+      const testModule = createTestModule({
+        id: 2,
+        name: "module-1",
+        sequence_order: 2,
+      });
       const submissionData = {
         responses: { q1: "final_answer", q2: true },
         metadata: { duration: 300 },
       };
 
-      stub(moduleRepository, "getModuleByName", () => Promise.resolve(testModule));
-      stub(moduleRepository, "isModuleAccessible", () => Promise.resolve(true));
-      const completeStub = stub(moduleRepository, "completeModule", () =>
-        Promise.resolve(createTestModuleProgress({ status: "COMPLETED", completed_at: new Date() }))
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(testModule),
       );
-      stub(moduleRepository, "getNextAccessibleModule", () => Promise.resolve(null));
+      stub(moduleRepository, "isModuleAccessible", () => Promise.resolve(true));
+      const completeStub = stub(
+        moduleRepository,
+        "completeModule",
+        () =>
+          Promise.resolve(
+            createTestModuleProgress({
+              status: "COMPLETED",
+              completed_at: new Date(),
+            }),
+          ),
+      );
+      stub(
+        moduleRepository,
+        "getNextAccessibleModule",
+        () => Promise.resolve(null),
+      );
       stub(auditRepository, "logModuleCompletion", () => Promise.resolve());
       stub(userRepository, "setActiveModule", () => Promise.resolve());
 
       await ModuleService.completeModule(1, "module-1", submissionData);
 
       assertEquals(completeStub.calls.length, 1);
-      const passedData = completeStub.calls[0].args[2] as Record<string, unknown>;
+      const passedData = completeStub.calls[0].args[2] as Record<
+        string,
+        unknown
+      >;
       assertExists(passedData.completed_at);
       assertEquals(typeof passedData.completed_at, "string"); // ISO string
-      assertEquals((passedData.responses as Record<string, unknown>).q1, "final_answer");
+      assertEquals(
+        (passedData.responses as Record<string, unknown>).q1,
+        "final_answer",
+      );
       assertEquals(passedData.metadata, { duration: 300 });
     });
 
     it("should count response keys for audit logging", async () => {
-      const testModule = createTestModule({ id: 2, name: "module-1", sequence_order: 2 });
+      const testModule = createTestModule({
+        id: 2,
+        name: "module-1",
+        sequence_order: 2,
+      });
       const submissionData = {
         responses: { q1: "a", q2: "b", q3: "c", q4: "d", q5: "e" },
       };
 
-      stub(moduleRepository, "getModuleByName", () => Promise.resolve(testModule));
-      stub(moduleRepository, "isModuleAccessible", () => Promise.resolve(true));
-      stub(moduleRepository, "completeModule", () =>
-        Promise.resolve(createTestModuleProgress({ status: "COMPLETED" }))
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(testModule),
       );
-      stub(moduleRepository, "getNextAccessibleModule", () => Promise.resolve(null));
-      const auditStub = stub(auditRepository, "logModuleCompletion", () => Promise.resolve());
+      stub(moduleRepository, "isModuleAccessible", () => Promise.resolve(true));
+      stub(
+        moduleRepository,
+        "completeModule",
+        () =>
+          Promise.resolve(createTestModuleProgress({ status: "COMPLETED" })),
+      );
+      stub(
+        moduleRepository,
+        "getNextAccessibleModule",
+        () => Promise.resolve(null),
+      );
+      const auditStub = stub(
+        auditRepository,
+        "logModuleCompletion",
+        () => Promise.resolve(),
+      );
       stub(userRepository, "setActiveModule", () => Promise.resolve());
 
       await ModuleService.completeModule(1, "module-1", submissionData);
 
-      const auditDetails = auditStub.calls[0].args[1] as Record<string, unknown>;
+      const auditDetails = auditStub.calls[0].args[1] as Record<
+        string,
+        unknown
+      >;
       assertEquals(auditDetails.response_count, 5);
     });
   });

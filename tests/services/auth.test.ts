@@ -5,10 +5,7 @@
  */
 
 // Set env BEFORE any service imports (Firebase initializes at import time)
-import {
-  setupTestEnv,
-  restoreEnv,
-} from "../test-config.ts";
+import { restoreEnv, setupTestEnv } from "../test-config.ts";
 const _originalEnv = setupTestEnv();
 
 import {
@@ -28,12 +25,14 @@ const { UserService } = await import("../../services/userService.ts");
 const { userRepository } = await import("../../db/index.ts");
 const { ModuleService } = await import("../../services/moduleService.ts");
 const { AliasGenerator } = await import("../../services/aliasGenerator.ts");
-const { PasswordGenerator } = await import("../../services/passwordGenerator.ts");
+const { PasswordGenerator } = await import(
+  "../../services/passwordGenerator.ts"
+);
 
 // Import firebase auth and bcrypt for stubbing
 // deno-lint-ignore no-explicit-any
 let auth: any;
-// deno-lint-ignore no-explicit-any
+// deno-lint-ignore no-explicit-any prefer-const
 let bcrypt: any;
 
 try {
@@ -69,23 +68,40 @@ describe("UserService", () => {
     it("should create user with all dependencies and return credentials", async () => {
       const testUuid = "test-uuid-12345";
 
-      stub(AliasGenerator, "generateUnique", () => Promise.resolve("BraveTiger42"));
+      stub(
+        AliasGenerator,
+        "generateUnique",
+        () => Promise.resolve("BraveTiger42"),
+      );
       stub(PasswordGenerator, "generate", () => "SecurePass123");
       stub(bcrypt, "hash", () => Promise.resolve("$2a$12$hashedpassword"));
-      const fbCreateStub = stub(auth, "createUser", () =>
-        Promise.resolve({ uid: testUuid })
+      const fbCreateStub = stub(
+        auth,
+        "createUser",
+        () => Promise.resolve({ uid: testUuid }),
       );
-      const fbClaimsStub = stub(auth, "setCustomUserClaims", () => Promise.resolve());
-      const dbCreateStub = stub(userRepository, "createUser", () =>
-        Promise.resolve({
-          id: 1,
-          uuid: testUuid,
-          alias: "BraveTiger42",
-          status: "ACTIVE",
-          created_at: new Date(),
-        })
+      const fbClaimsStub = stub(
+        auth,
+        "setCustomUserClaims",
+        () => Promise.resolve(),
       );
-      const initStub = stub(ModuleService, "initializeUserModules", () => Promise.resolve());
+      const dbCreateStub = stub(
+        userRepository,
+        "createUser",
+        () =>
+          Promise.resolve({
+            id: 1,
+            uuid: testUuid,
+            alias: "BraveTiger42",
+            status: "ACTIVE",
+            created_at: new Date(),
+          }),
+      );
+      const initStub = stub(
+        ModuleService,
+        "initializeUserModules",
+        () => Promise.resolve(),
+      );
 
       const result = await UserService.createAnonymousUser();
 
@@ -120,16 +136,31 @@ describe("UserService", () => {
     });
 
     it("should still succeed when module initialization fails", async () => {
-      stub(AliasGenerator, "generateUnique", () => Promise.resolve("SwiftEagle99"));
+      stub(
+        AliasGenerator,
+        "generateUnique",
+        () => Promise.resolve("SwiftEagle99"),
+      );
       stub(PasswordGenerator, "generate", () => "TestPass456");
       stub(bcrypt, "hash", () => Promise.resolve("$2a$12$hashed"));
       stub(auth, "createUser", () => Promise.resolve({ uid: "uuid-123" }));
       stub(auth, "setCustomUserClaims", () => Promise.resolve());
-      stub(userRepository, "createUser", () =>
-        Promise.resolve({ id: 2, uuid: "uuid-123", alias: "SwiftEagle99", status: "ACTIVE", created_at: new Date() })
+      stub(
+        userRepository,
+        "createUser",
+        () =>
+          Promise.resolve({
+            id: 2,
+            uuid: "uuid-123",
+            alias: "SwiftEagle99",
+            status: "ACTIVE",
+            created_at: new Date(),
+          }),
       );
-      stub(ModuleService, "initializeUserModules", () =>
-        Promise.reject(new Error("DB connection failed"))
+      stub(
+        ModuleService,
+        "initializeUserModules",
+        () => Promise.reject(new Error("DB connection failed")),
       );
 
       const result = await UserService.createAnonymousUser();
@@ -140,11 +171,17 @@ describe("UserService", () => {
     });
 
     it("should propagate Firebase createUser errors", async () => {
-      stub(AliasGenerator, "generateUnique", () => Promise.resolve("TestAlias1"));
+      stub(
+        AliasGenerator,
+        "generateUnique",
+        () => Promise.resolve("TestAlias1"),
+      );
       stub(PasswordGenerator, "generate", () => "TestPass789");
       stub(bcrypt, "hash", () => Promise.resolve("$2a$12$hashed"));
-      stub(auth, "createUser", () =>
-        Promise.reject(new Error("Firebase unavailable"))
+      stub(
+        auth,
+        "createUser",
+        () => Promise.reject(new Error("Firebase unavailable")),
       );
 
       await assertRejects(
@@ -157,7 +194,8 @@ describe("UserService", () => {
 
   describe("authenticateUser", () => {
     it("should authenticate valid user with correct password", async () => {
-      const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        .toISOString();
       const pastDate = new Date(Date.now() - 1000).toISOString();
 
       stub(auth, "listUsers", () =>
@@ -173,11 +211,13 @@ describe("UserService", () => {
               },
             },
           ],
-        })
-      );
+        }));
       stub(bcrypt, "compare", () => Promise.resolve(true));
 
-      const result = await UserService.authenticateUser("BraveTiger42", "correct-password");
+      const result = await UserService.authenticateUser(
+        "BraveTiger42",
+        "correct-password",
+      );
 
       assertExists(result);
       assertEquals(result!.uuid, "user-uid-1");
@@ -186,17 +226,19 @@ describe("UserService", () => {
     });
 
     it("should return null when user not found", async () => {
-      stub(auth, "listUsers", () =>
-        Promise.resolve({ users: [] })
-      );
+      stub(auth, "listUsers", () => Promise.resolve({ users: [] }));
 
-      const result = await UserService.authenticateUser("NonexistentUser", "password");
+      const result = await UserService.authenticateUser(
+        "NonexistentUser",
+        "password",
+      );
 
       assertEquals(result, null);
     });
 
     it("should return null when password is incorrect", async () => {
-      const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        .toISOString();
 
       stub(auth, "listUsers", () =>
         Promise.resolve({
@@ -211,17 +253,20 @@ describe("UserService", () => {
               },
             },
           ],
-        })
-      );
+        }));
       stub(bcrypt, "compare", () => Promise.resolve(false));
 
-      const result = await UserService.authenticateUser("BraveTiger42", "wrong-password");
+      const result = await UserService.authenticateUser(
+        "BraveTiger42",
+        "wrong-password",
+      );
 
       assertEquals(result, null);
     });
 
     it("should return null and disable expired accounts", async () => {
-      const expiredDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const expiredDate = new Date(Date.now() - 24 * 60 * 60 * 1000)
+        .toISOString();
 
       stub(auth, "listUsers", () =>
         Promise.resolve({
@@ -231,16 +276,19 @@ describe("UserService", () => {
               customClaims: {
                 friendlyAlias: "ExpiredUser",
                 password: "$2a$12$hashed",
-                createdAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString(),
+                createdAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000)
+                  .toISOString(),
                 expiresAt: expiredDate,
               },
             },
           ],
-        })
-      );
+        }));
       const updateStub = stub(auth, "updateUser", () => Promise.resolve({}));
 
-      const result = await UserService.authenticateUser("ExpiredUser", "password");
+      const result = await UserService.authenticateUser(
+        "ExpiredUser",
+        "password",
+      );
 
       assertEquals(result, null);
       assertEquals(updateStub.calls.length, 1);
@@ -252,8 +300,10 @@ describe("UserService", () => {
     });
 
     it("should return null when Firebase throws an error", async () => {
-      stub(auth, "listUsers", () =>
-        Promise.reject(new Error("Firebase connection error"))
+      stub(
+        auth,
+        "listUsers",
+        () => Promise.reject(new Error("Firebase connection error")),
       );
 
       const result = await UserService.authenticateUser("AnyUser", "password");
@@ -264,7 +314,8 @@ describe("UserService", () => {
 
   describe("updatePassword", () => {
     it("should update password successfully", async () => {
-      const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        .toISOString();
 
       stub(auth, "getUser", () =>
         Promise.resolve({
@@ -275,24 +326,36 @@ describe("UserService", () => {
             createdAt: new Date().toISOString(),
             expiresAt: futureDate,
           },
-        })
-      );
+        }));
       stub(bcrypt, "compare", () => Promise.resolve(true));
       stub(bcrypt, "hash", () => Promise.resolve("$2a$12$newhash"));
-      const claimsStub = stub(auth, "setCustomUserClaims", () => Promise.resolve());
+      const claimsStub = stub(
+        auth,
+        "setCustomUserClaims",
+        () => Promise.resolve(),
+      );
 
-      const result = await UserService.updatePassword("user-uid-1", "oldPassword", "newPassword");
+      const result = await UserService.updatePassword(
+        "user-uid-1",
+        "oldPassword",
+        "newPassword",
+      );
 
       assertEquals(result.success, true);
       assertEquals(result.message, "Password updated successfully");
       assertEquals(claimsStub.calls.length, 1);
-      const updatedClaims = claimsStub.calls[0].args[1] as Record<string, unknown>;
+      const updatedClaims = claimsStub.calls[0].args[1] as Record<
+        string,
+        unknown
+      >;
       assertEquals(updatedClaims.password, "$2a$12$newhash");
     });
 
     it("should fail when user not found", async () => {
-      stub(auth, "getUser", () =>
-        Promise.resolve({ uid: "uid", customClaims: null })
+      stub(
+        auth,
+        "getUser",
+        () => Promise.resolve({ uid: "uid", customClaims: null }),
       );
 
       const result = await UserService.updatePassword("uid", "old", "new");
@@ -311,8 +374,7 @@ describe("UserService", () => {
             password: "$2a$12$hash",
             expiresAt: expiredDate,
           },
-        })
-      );
+        }));
 
       const result = await UserService.updatePassword("uid", "old", "new");
 
@@ -321,7 +383,8 @@ describe("UserService", () => {
     });
 
     it("should fail when current password is incorrect", async () => {
-      const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        .toISOString();
 
       stub(auth, "getUser", () =>
         Promise.resolve({
@@ -330,20 +393,21 @@ describe("UserService", () => {
             password: "$2a$12$hash",
             expiresAt: futureDate,
           },
-        })
-      );
+        }));
       stub(bcrypt, "compare", () => Promise.resolve(false));
 
-      const result = await UserService.updatePassword("uid", "wrongPassword", "newPassword");
+      const result = await UserService.updatePassword(
+        "uid",
+        "wrongPassword",
+        "newPassword",
+      );
 
       assertEquals(result.success, false);
       assertEquals(result.message, "Invalid credentials");
     });
 
     it("should handle Firebase errors gracefully", async () => {
-      stub(auth, "getUser", () =>
-        Promise.reject(new Error("Firebase error"))
-      );
+      stub(auth, "getUser", () => Promise.reject(new Error("Firebase error")));
 
       const result = await UserService.updatePassword("uid", "old", "new");
 

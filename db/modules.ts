@@ -236,7 +236,10 @@ export class ModuleRepository {
 
     // If no rows affected, check if it's because module is completed or doesn't exist
     if (result.length === 0) {
-      const existingProgress = await this.getUserModuleProgress(userId, moduleId);
+      const existingProgress = await this.getUserModuleProgress(
+        userId,
+        moduleId,
+      );
       if (existingProgress?.status === "COMPLETED") {
         throw new Error(
           "Module is read-only - completed modules cannot be modified",

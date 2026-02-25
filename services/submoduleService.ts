@@ -332,8 +332,8 @@ export class SubmoduleService {
     );
 
     const unlockedIds = results
-      .filter((r) => r.unlocked)
-      .map((r) => r.target_submodule_id);
+      .filter((r) => r.unlocked && r.target_submodule_id != null)
+      .map((r) => r.target_submodule_id as number);
 
     // Log unlocked submodules
     if (unlockedIds.length > 0) {

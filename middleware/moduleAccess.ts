@@ -33,7 +33,7 @@ export const moduleAccessMiddleware = createMiddleware(async (c, next) => {
 
   try {
     // Get user record from database
-    const userRecord = await userRepository.findByUuid(user.id);
+    const userRecord = await userRepository.findByUuid(user.uuid);
     if (!userRecord) {
       return c.json({ error: "User not found" }, 404);
     }
@@ -211,7 +211,7 @@ export const enforceSequentialAccess = createMiddleware(async (c, next) => {
   }
 
   try {
-    const userRecord = await userRepository.findByUuid(user.id);
+    const userRecord = await userRepository.findByUuid(user.uuid);
     if (!userRecord) {
       return c.json({ error: "User not found" }, 404);
     }

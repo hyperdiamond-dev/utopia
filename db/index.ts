@@ -11,10 +11,7 @@ export {
 export { UserRepository, userRepository } from "./users.ts";
 export { ModuleRepository, moduleRepository } from "./modules.ts";
 export { PathRepository, pathRepository } from "./paths.ts";
-export {
-  FileUploadRepository,
-  fileUploadRepository,
-} from "./fileUploads.ts";
+export { FileUploadRepository, fileUploadRepository } from "./fileUploads.ts";
 export {
   ModuleContentRepository,
   moduleContentRepository,

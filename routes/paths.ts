@@ -386,7 +386,9 @@ paths.post(
       );
 
       // Get unlocked paths
-      const unlockedPaths = await PathService.getUnlockedUserPaths(userRecord.id);
+      const unlockedPaths = await PathService.getUnlockedUserPaths(
+        userRecord.id,
+      );
 
       return c.json({
         message: "Path completed successfully",
@@ -400,7 +402,9 @@ paths.post(
     } catch (error) {
       console.error("Failed to complete path:", error);
       return c.json({
-        error: error instanceof Error ? error.message : "Failed to complete path",
+        error: error instanceof Error
+          ? error.message
+          : "Failed to complete path",
       }, 500);
     }
   },

@@ -258,23 +258,48 @@ export class BranchingRuleRepository {
         return { unlocked: true, reason: "Always unlock" };
 
       case "question_answer": {
-        const unlocked = await this.evaluateQuestionAnswer(userId, rule.condition_config);
-        return { unlocked, reason: unlocked ? "Question answer matched" : "Question answer did not match" };
+        const unlocked = await this.evaluateQuestionAnswer(
+          userId,
+          rule.condition_config,
+        );
+        return {
+          unlocked,
+          reason: unlocked
+            ? "Question answer matched"
+            : "Question answer did not match",
+        };
       }
 
       case "all_complete": {
-        const unlocked = await this.evaluateAllComplete(userId, rule.condition_config);
-        return { unlocked, reason: unlocked ? "All items completed" : "Not all items completed" };
+        const unlocked = await this.evaluateAllComplete(
+          userId,
+          rule.condition_config,
+        );
+        return {
+          unlocked,
+          reason: unlocked ? "All items completed" : "Not all items completed",
+        };
       }
 
       case "any_complete": {
-        const unlocked = await this.evaluateAnyComplete(userId, rule.condition_config);
-        return { unlocked, reason: unlocked ? "At least one item completed" : "No items completed" };
+        const unlocked = await this.evaluateAnyComplete(
+          userId,
+          rule.condition_config,
+        );
+        return {
+          unlocked,
+          reason: unlocked
+            ? "At least one item completed"
+            : "No items completed",
+        };
       }
 
       default:
         console.warn(`Unknown condition type: ${rule.condition_type}`);
-        return { unlocked: false, reason: `Unknown condition type: ${rule.condition_type}` };
+        return {
+          unlocked: false,
+          reason: `Unknown condition type: ${rule.condition_type}`,
+        };
     }
   }
 
@@ -398,8 +423,13 @@ export class BranchingRuleRepository {
     const pathIds = config.path_ids || [];
     const moduleIds = config.module_ids || [];
 
-    if (submoduleIds.length === 0 && pathIds.length === 0 && moduleIds.length === 0) {
-      console.warn("all_complete condition missing submodule_ids, path_ids, or module_ids");
+    if (
+      submoduleIds.length === 0 && pathIds.length === 0 &&
+      moduleIds.length === 0
+    ) {
+      console.warn(
+        "all_complete condition missing submodule_ids, path_ids, or module_ids",
+      );
       return false;
     }
 
@@ -413,7 +443,12 @@ export class BranchingRuleRepository {
         WHERE s.id = ANY(${submoduleIds})
         AND (usp.status IS NULL OR usp.status != 'COMPLETED')
       `;
-      if (parseInt((result[0] as { incomplete_count: string }).incomplete_count, 10) > 0) {
+      if (
+        parseInt(
+          (result[0] as { incomplete_count: string }).incomplete_count,
+          10,
+        ) > 0
+      ) {
         return false;
       }
     }
@@ -428,7 +463,12 @@ export class BranchingRuleRepository {
         WHERE p.id = ANY(${pathIds})
         AND (upp.status IS NULL OR upp.status != 'COMPLETED')
       `;
-      if (parseInt((result[0] as { incomplete_count: string }).incomplete_count, 10) > 0) {
+      if (
+        parseInt(
+          (result[0] as { incomplete_count: string }).incomplete_count,
+          10,
+        ) > 0
+      ) {
         return false;
       }
     }
@@ -443,7 +483,12 @@ export class BranchingRuleRepository {
         WHERE m.id = ANY(${moduleIds})
         AND (ump.status IS NULL OR ump.status != 'COMPLETED')
       `;
-      if (parseInt((result[0] as { incomplete_count: string }).incomplete_count, 10) > 0) {
+      if (
+        parseInt(
+          (result[0] as { incomplete_count: string }).incomplete_count,
+          10,
+        ) > 0
+      ) {
         return false;
       }
     }
@@ -463,8 +508,13 @@ export class BranchingRuleRepository {
     const pathIds = config.path_ids || [];
     const moduleIds = config.module_ids || [];
 
-    if (submoduleIds.length === 0 && pathIds.length === 0 && moduleIds.length === 0) {
-      console.warn("any_complete condition missing submodule_ids, path_ids, or module_ids");
+    if (
+      submoduleIds.length === 0 && pathIds.length === 0 &&
+      moduleIds.length === 0
+    ) {
+      console.warn(
+        "any_complete condition missing submodule_ids, path_ids, or module_ids",
+      );
       return false;
     }
 
@@ -477,7 +527,10 @@ export class BranchingRuleRepository {
         AND submodule_id = ANY(${submoduleIds})
         AND status = 'COMPLETED'
       `;
-      if (parseInt((result[0] as { complete_count: string }).complete_count, 10) > 0) {
+      if (
+        parseInt((result[0] as { complete_count: string }).complete_count, 10) >
+          0
+      ) {
         return true;
       }
     }
@@ -491,7 +544,10 @@ export class BranchingRuleRepository {
         AND path_id = ANY(${pathIds})
         AND status = 'COMPLETED'
       `;
-      if (parseInt((result[0] as { complete_count: string }).complete_count, 10) > 0) {
+      if (
+        parseInt((result[0] as { complete_count: string }).complete_count, 10) >
+          0
+      ) {
         return true;
       }
     }
@@ -505,7 +561,10 @@ export class BranchingRuleRepository {
         AND module_id = ANY(${moduleIds})
         AND status = 'COMPLETED'
       `;
-      if (parseInt((result[0] as { complete_count: string }).complete_count, 10) > 0) {
+      if (
+        parseInt((result[0] as { complete_count: string }).complete_count, 10) >
+          0
+      ) {
         return true;
       }
     }
@@ -522,9 +581,9 @@ export class BranchingRuleRepository {
     submoduleId?: number | null,
   ): Promise<number[]> {
     const results = await this.evaluateRules(userId, moduleId, submoduleId);
-    return results
-      ?.filter((r) => r.unlocked)
-      ?.map((r) => r.target_submodule_id) ?? [] as number[];
+    return (results
+      ?.filter((r) => r.unlocked && r.target_submodule_id != null)
+      ?.map((r) => r.target_submodule_id as number)) ?? [];
   }
 
   /**
@@ -743,7 +802,9 @@ export class BranchingRuleRepository {
     return this.createRule({
       source_module_id: sourceModuleId,
       source_submodule_id: sourceSubmoduleId,
+      source_path_id: null,
       target_submodule_id: targetSubmoduleId,
+      target_path_id: null,
       condition_type: "question_answer",
       condition_config: {
         question_id: questionId,
@@ -805,7 +866,12 @@ export class BranchingRuleRepository {
     targetPathId: number,
     questionId: number,
     expectedValue: ResponseValue,
-    operator: "equals" | "not_equals" | "contains" | "greater_than" | "less_than" = "equals",
+    operator:
+      | "equals"
+      | "not_equals"
+      | "contains"
+      | "greater_than"
+      | "less_than" = "equals",
     priority: number = 0,
   ): Promise<BranchingRule> {
     return this.createPathRule(

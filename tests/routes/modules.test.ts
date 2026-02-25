@@ -4,10 +4,7 @@
  * Stubs repositories and services to test the full middleware chain
  */
 
-import {
-  setupTestEnv,
-  restoreEnv,
-} from "../test-config.ts";
+import { restoreEnv, setupTestEnv } from "../test-config.ts";
 // Set env before imports
 const _envBak = setupTestEnv();
 
@@ -16,15 +13,15 @@ import {
   assertEquals,
   assertExists,
   beforeEach,
-  describe,
-  it,
-  restore,
-  stubMethod as stub,
+  createSignedTestJWT,
   createTestModule,
   createTestModuleProgress,
   createTestUser,
+  describe,
   initTestJwt,
-  createSignedTestJWT,
+  it,
+  restore,
+  stubMethod as stub,
 } from "../test-config.ts";
 
 import { Hono } from "hono";
@@ -38,7 +35,7 @@ const { ModuleService } = await import("../../services/moduleService.ts");
 await initTestJwt();
 
 // Helper to make requests
-function makeRequest(
+async function makeRequest(
   app: Hono,
   method: string,
   path: string,
@@ -48,7 +45,7 @@ function makeRequest(
   if (options.token) headers["Authorization"] = `Bearer ${options.token}`;
   if (options.body) headers["Content-Type"] = "application/json";
 
-  return app.request(
+  return await app.request(
     new Request(`http://localhost${path}`, {
       method,
       headers,
@@ -77,11 +74,25 @@ describe("Module Routes", () => {
   describe("GET /modules/list", () => {
     it("should return public module list without authentication", async () => {
       const testModules = [
-        createTestModule({ id: 1, name: "consent", title: "Consent Form", sequence_order: 1 }),
-        createTestModule({ id: 2, name: "module-1", title: "Module 1", sequence_order: 2 }),
+        createTestModule({
+          id: 1,
+          name: "consent",
+          title: "Consent Form",
+          sequence_order: 1,
+        }),
+        createTestModule({
+          id: 2,
+          name: "module-1",
+          title: "Module 1",
+          sequence_order: 2,
+        }),
       ];
 
-      stub(moduleRepository, "getAllModules", () => Promise.resolve(testModules));
+      stub(
+        moduleRepository,
+        "getAllModules",
+        () => Promise.resolve(testModules),
+      );
 
       const res = await makeRequest(app, "GET", "/modules/list");
 
@@ -98,8 +109,10 @@ describe("Module Routes", () => {
     });
 
     it("should return 500 when repository throws", async () => {
-      stub(moduleRepository, "getAllModules", () =>
-        Promise.reject(new Error("DB error"))
+      stub(
+        moduleRepository,
+        "getAllModules",
+        () => Promise.reject(new Error("DB error")),
       );
 
       const res = await makeRequest(app, "GET", "/modules/list");
@@ -120,8 +133,16 @@ describe("Module Routes", () => {
     it("should return module overview for authenticated user", async () => {
       const testUser = createTestUser({ id: 1, uuid: "user_test-uuid" });
       const overview = [
-        { ...createTestModule({ name: "consent" }), user_progress: { status: "COMPLETED" }, accessible: true },
-        { ...createTestModule({ name: "module-1" }), user_progress: { status: "IN_PROGRESS" }, accessible: true },
+        {
+          ...createTestModule({ name: "consent" }),
+          user_progress: { status: "COMPLETED" },
+          accessible: true,
+        },
+        {
+          ...createTestModule({ name: "module-1" }),
+          user_progress: { status: "IN_PROGRESS" },
+          accessible: true,
+        },
       ];
       const navState = {
         currentModule: createTestModule({ name: "module-1" }),
@@ -130,14 +151,32 @@ describe("Module Routes", () => {
         nextModule: null,
         progressPercentage: 50,
       };
-      const progressStats = { total_modules: 2, completed_modules: 1, completion_percentage: 50 };
+      const progressStats = {
+        total_modules: 2,
+        completed_modules: 1,
+        completion_percentage: 50,
+      };
 
       stub(userRepository, "findByUuid", () => Promise.resolve(testUser));
-      stub(ModuleService, "getUserModuleOverview", () => Promise.resolve(overview));
-      stub(ModuleService, "getNavigationState", () => Promise.resolve(navState));
-      stub(ModuleService, "getUserProgress", () => Promise.resolve(progressStats));
+      stub(
+        ModuleService,
+        "getUserModuleOverview",
+        () => Promise.resolve(overview),
+      );
+      stub(
+        ModuleService,
+        "getNavigationState",
+        () => Promise.resolve(navState),
+      );
+      stub(
+        ModuleService,
+        "getUserProgress",
+        () => Promise.resolve(progressStats),
+      );
 
-      const res = await makeRequest(app, "GET", "/modules", { token: validToken });
+      const res = await makeRequest(app, "GET", "/modules", {
+        token: validToken,
+      });
 
       assertEquals(res.status, 200);
       const body = await res.json();
@@ -151,7 +190,9 @@ describe("Module Routes", () => {
     it("should return 404 when user not found in database", async () => {
       stub(userRepository, "findByUuid", () => Promise.resolve(null));
 
-      const res = await makeRequest(app, "GET", "/modules", { token: validToken });
+      const res = await makeRequest(app, "GET", "/modules", {
+        token: validToken,
+      });
 
       assertEquals(res.status, 404);
     });
@@ -170,10 +211,20 @@ describe("Module Routes", () => {
       };
 
       stub(userRepository, "findByUuid", () => Promise.resolve(testUser));
-      stub(ModuleService, "getCurrentModule", () => Promise.resolve(currentModule));
-      stub(ModuleService, "getModuleForUser", () => Promise.resolve(moduleData));
+      stub(
+        ModuleService,
+        "getCurrentModule",
+        () => Promise.resolve(currentModule),
+      );
+      stub(
+        ModuleService,
+        "getModuleForUser",
+        () => Promise.resolve(moduleData),
+      );
 
-      const res = await makeRequest(app, "GET", "/modules/current", { token: validToken });
+      const res = await makeRequest(app, "GET", "/modules/current", {
+        token: validToken,
+      });
 
       assertEquals(res.status, 200);
       const body = await res.json();
@@ -188,7 +239,9 @@ describe("Module Routes", () => {
       stub(userRepository, "findByUuid", () => Promise.resolve(testUser));
       stub(ModuleService, "getCurrentModule", () => Promise.resolve(null));
 
-      const res = await makeRequest(app, "GET", "/modules/current", { token: validToken });
+      const res = await makeRequest(app, "GET", "/modules/current", {
+        token: validToken,
+      });
 
       assertEquals(res.status, 200);
       const body = await res.json();
@@ -210,13 +263,21 @@ describe("Module Routes", () => {
       };
 
       stub(userRepository, "findByUuid", () => Promise.resolve(testUser));
-      stub(ModuleService, "checkModuleAccess", () =>
-        Promise.resolve({ accessible: true })
+      stub(
+        ModuleService,
+        "checkModuleAccess",
+        () => Promise.resolve({ accessible: true }),
       );
       stub(ModuleService, "logAccessDenied", () => Promise.resolve());
-      stub(ModuleService, "getModuleForUser", () => Promise.resolve(moduleData));
+      stub(
+        ModuleService,
+        "getModuleForUser",
+        () => Promise.resolve(moduleData),
+      );
 
-      const res = await makeRequest(app, "GET", "/modules/module-1", { token: validToken });
+      const res = await makeRequest(app, "GET", "/modules/module-1", {
+        token: validToken,
+      });
 
       assertEquals(res.status, 200);
       const body = await res.json();
@@ -228,7 +289,10 @@ describe("Module Routes", () => {
 
     it("should return 403 when module is not accessible", async () => {
       const testUser = createTestUser({ id: 1, uuid: "user_test-uuid" });
-      const nextModule = createTestModule({ name: "consent", title: "Consent Form" });
+      const nextModule = createTestModule({
+        name: "consent",
+        title: "Consent Form",
+      });
 
       stub(userRepository, "findByUuid", () => Promise.resolve(testUser));
       stub(ModuleService, "checkModuleAccess", () =>
@@ -236,11 +300,12 @@ describe("Module Routes", () => {
           accessible: false,
           reason: "Complete previous modules first",
           nextModule,
-        })
-      );
+        }));
       stub(ModuleService, "logAccessDenied", () => Promise.resolve());
 
-      const res = await makeRequest(app, "GET", "/modules/module-2", { token: validToken });
+      const res = await makeRequest(app, "GET", "/modules/module-2", {
+        token: validToken,
+      });
 
       assertEquals(res.status, 403);
       const body = await res.json();
@@ -266,13 +331,21 @@ describe("Module Routes", () => {
       };
 
       stub(userRepository, "findByUuid", () => Promise.resolve(testUser));
-      stub(ModuleService, "checkModuleAccess", () =>
-        Promise.resolve({ accessible: true })
+      stub(
+        ModuleService,
+        "checkModuleAccess",
+        () => Promise.resolve({ accessible: true }),
       );
-      stub(ModuleService, "getModuleForUser", () => Promise.resolve(moduleData));
+      stub(
+        ModuleService,
+        "getModuleForUser",
+        () => Promise.resolve(moduleData),
+      );
       stub(ModuleService, "startModule", () => Promise.resolve(progress));
 
-      const res = await makeRequest(app, "POST", "/modules/module-1/start", { token: validToken });
+      const res = await makeRequest(app, "POST", "/modules/module-1/start", {
+        token: validToken,
+      });
 
       assertEquals(res.status, 200);
       const body = await res.json();
@@ -291,12 +364,20 @@ describe("Module Routes", () => {
       };
 
       stub(userRepository, "findByUuid", () => Promise.resolve(testUser));
-      stub(ModuleService, "checkModuleAccess", () =>
-        Promise.resolve({ accessible: true })
+      stub(
+        ModuleService,
+        "checkModuleAccess",
+        () => Promise.resolve({ accessible: true }),
       );
-      stub(ModuleService, "getModuleForUser", () => Promise.resolve(moduleData));
+      stub(
+        ModuleService,
+        "getModuleForUser",
+        () => Promise.resolve(moduleData),
+      );
 
-      const res = await makeRequest(app, "POST", "/modules/consent/start", { token: validToken });
+      const res = await makeRequest(app, "POST", "/modules/consent/start", {
+        token: validToken,
+      });
 
       assertEquals(res.status, 403);
       const body = await res.json();
@@ -316,12 +397,21 @@ describe("Module Routes", () => {
       };
 
       stub(userRepository, "findByUuid", () => Promise.resolve(testUser));
-      stub(ModuleService, "checkModuleAccess", () =>
-        Promise.resolve({ accessible: true })
+      stub(
+        ModuleService,
+        "checkModuleAccess",
+        () => Promise.resolve({ accessible: true }),
       );
-      stub(ModuleService, "getModuleForUser", () => Promise.resolve(moduleData));
-      stub(ModuleService, "saveModuleProgress", () =>
-        Promise.resolve(createTestModuleProgress({ status: "IN_PROGRESS" }))
+      stub(
+        ModuleService,
+        "getModuleForUser",
+        () => Promise.resolve(moduleData),
+      );
+      stub(
+        ModuleService,
+        "saveModuleProgress",
+        () =>
+          Promise.resolve(createTestModuleProgress({ status: "IN_PROGRESS" })),
       );
 
       const res = await makeRequest(app, "POST", "/modules/module-1/save", {
@@ -347,10 +437,16 @@ describe("Module Routes", () => {
       };
 
       stub(userRepository, "findByUuid", () => Promise.resolve(testUser));
-      stub(ModuleService, "checkModuleAccess", () =>
-        Promise.resolve({ accessible: true })
+      stub(
+        ModuleService,
+        "checkModuleAccess",
+        () => Promise.resolve({ accessible: true }),
       );
-      stub(ModuleService, "getModuleForUser", () => Promise.resolve(moduleData));
+      stub(
+        ModuleService,
+        "getModuleForUser",
+        () => Promise.resolve(moduleData),
+      );
 
       const res = await makeRequest(app, "POST", "/modules/module-1/save", {
         token: validToken,
@@ -377,21 +473,51 @@ describe("Module Routes", () => {
         status: "COMPLETED",
         completed_at: new Date(),
       });
-      const nextModule = createTestModule({ id: 3, name: "module-2", title: "Module 2", sequence_order: 3 });
-      const progressStats = { total_modules: 4, completed_modules: 2, completion_percentage: 50 };
+      const nextModule = createTestModule({
+        id: 3,
+        name: "module-2",
+        title: "Module 2",
+        sequence_order: 3,
+      });
+      const progressStats = {
+        total_modules: 4,
+        completed_modules: 2,
+        completion_percentage: 50,
+      };
 
       stub(userRepository, "findByUuid", () => Promise.resolve(testUser));
-      stub(ModuleService, "checkModuleAccess", () =>
-        Promise.resolve({ accessible: true })
+      stub(
+        ModuleService,
+        "checkModuleAccess",
+        () => Promise.resolve({ accessible: true }),
       );
-      stub(ModuleService, "getModuleForUser", () => Promise.resolve(moduleDataInProgress));
-      stub(ModuleService, "completeModule", () => Promise.resolve(completedProgress));
-      stub(ModuleService, "getCurrentModule", () => Promise.resolve(nextModule));
-      stub(ModuleService, "getUserProgress", () => Promise.resolve(progressStats));
+      stub(
+        ModuleService,
+        "getModuleForUser",
+        () => Promise.resolve(moduleDataInProgress),
+      );
+      stub(
+        ModuleService,
+        "completeModule",
+        () => Promise.resolve(completedProgress),
+      );
+      stub(
+        ModuleService,
+        "getCurrentModule",
+        () => Promise.resolve(nextModule),
+      );
+      stub(
+        ModuleService,
+        "getUserProgress",
+        () => Promise.resolve(progressStats),
+      );
 
       const res = await makeRequest(app, "POST", "/modules/module-1/complete", {
         token: validToken,
-        body: { responses: { q1: "a1", q2: "a2" }, metadata: { source: "web" } },
+        body: {
+          responses: { q1: "a1", q2: "a2" },
+          metadata: { source: "web" },
+        },
       });
 
       assertEquals(res.status, 200);
@@ -414,10 +540,16 @@ describe("Module Routes", () => {
       };
 
       stub(userRepository, "findByUuid", () => Promise.resolve(testUser));
-      stub(ModuleService, "checkModuleAccess", () =>
-        Promise.resolve({ accessible: true })
+      stub(
+        ModuleService,
+        "checkModuleAccess",
+        () => Promise.resolve({ accessible: true }),
       );
-      stub(ModuleService, "getModuleForUser", () => Promise.resolve(moduleData));
+      stub(
+        ModuleService,
+        "getModuleForUser",
+        () => Promise.resolve(moduleData),
+      );
 
       const res = await makeRequest(app, "POST", "/modules/module-1/complete", {
         token: validToken,
@@ -441,10 +573,16 @@ describe("Module Routes", () => {
       };
 
       stub(userRepository, "findByUuid", () => Promise.resolve(testUser));
-      stub(ModuleService, "checkModuleAccess", () =>
-        Promise.resolve({ accessible: true })
+      stub(
+        ModuleService,
+        "checkModuleAccess",
+        () => Promise.resolve({ accessible: true }),
       );
-      stub(ModuleService, "getModuleForUser", () => Promise.resolve(moduleData));
+      stub(
+        ModuleService,
+        "getModuleForUser",
+        () => Promise.resolve(moduleData),
+      );
 
       const res = await makeRequest(app, "POST", "/modules/module-1/complete", {
         token: validToken,
@@ -473,12 +611,20 @@ describe("Module Routes", () => {
       };
 
       stub(userRepository, "findByUuid", () => Promise.resolve(testUser));
-      stub(ModuleService, "checkModuleAccess", () =>
-        Promise.resolve({ accessible: true })
+      stub(
+        ModuleService,
+        "checkModuleAccess",
+        () => Promise.resolve({ accessible: true }),
       );
-      stub(ModuleService, "getModuleForUser", () => Promise.resolve(moduleData));
+      stub(
+        ModuleService,
+        "getModuleForUser",
+        () => Promise.resolve(moduleData),
+      );
 
-      const res = await makeRequest(app, "GET", "/modules/consent/responses", { token: validToken });
+      const res = await makeRequest(app, "GET", "/modules/consent/responses", {
+        token: validToken,
+      });
 
       assertEquals(res.status, 200);
       const body = await res.json();
@@ -491,19 +637,30 @@ describe("Module Routes", () => {
       const testUser = createTestUser({ id: 1, uuid: "user_test-uuid" });
       const moduleData = {
         module: createTestModule({ id: 2, name: "module-1" }),
-        progress: createTestModuleProgress({ status: "IN_PROGRESS", response_data: null }),
+        progress: createTestModuleProgress({
+          status: "IN_PROGRESS",
+          response_data: null,
+        }),
         accessible: true,
         isCompleted: false,
         canReview: false,
       };
 
       stub(userRepository, "findByUuid", () => Promise.resolve(testUser));
-      stub(ModuleService, "checkModuleAccess", () =>
-        Promise.resolve({ accessible: true })
+      stub(
+        ModuleService,
+        "checkModuleAccess",
+        () => Promise.resolve({ accessible: true }),
       );
-      stub(ModuleService, "getModuleForUser", () => Promise.resolve(moduleData));
+      stub(
+        ModuleService,
+        "getModuleForUser",
+        () => Promise.resolve(moduleData),
+      );
 
-      const res = await makeRequest(app, "GET", "/modules/module-1/responses", { token: validToken });
+      const res = await makeRequest(app, "GET", "/modules/module-1/responses", {
+        token: validToken,
+      });
 
       assertEquals(res.status, 200);
       const body = await res.json();
@@ -530,10 +687,20 @@ describe("Module Routes", () => {
       };
 
       stub(userRepository, "findByUuid", () => Promise.resolve(testUser));
-      stub(ModuleService, "getUserProgress", () => Promise.resolve(progressStats));
-      stub(ModuleService, "getNavigationState", () => Promise.resolve(navState));
+      stub(
+        ModuleService,
+        "getUserProgress",
+        () => Promise.resolve(progressStats),
+      );
+      stub(
+        ModuleService,
+        "getNavigationState",
+        () => Promise.resolve(navState),
+      );
 
-      const res = await makeRequest(app, "GET", "/modules/progress/stats", { token: validToken });
+      const res = await makeRequest(app, "GET", "/modules/progress/stats", {
+        token: validToken,
+      });
 
       assertEquals(res.status, 200);
       const body = await res.json();

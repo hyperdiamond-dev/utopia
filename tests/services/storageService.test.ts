@@ -75,11 +75,17 @@ describe("StorageService", () => {
 
   describe("getExtensionFromMimeType", () => {
     it("should return .jpg for image/jpeg", () => {
-      assertEquals(StorageService.getExtensionFromMimeType("image/jpeg"), ".jpg");
+      assertEquals(
+        StorageService.getExtensionFromMimeType("image/jpeg"),
+        ".jpg",
+      );
     });
 
     it("should return .png for image/png", () => {
-      assertEquals(StorageService.getExtensionFromMimeType("image/png"), ".png");
+      assertEquals(
+        StorageService.getExtensionFromMimeType("image/png"),
+        ".png",
+      );
     });
 
     it("should return .pdf for application/pdf", () => {
@@ -90,7 +96,10 @@ describe("StorageService", () => {
     });
 
     it("should return .mp4 for video/mp4", () => {
-      assertEquals(StorageService.getExtensionFromMimeType("video/mp4"), ".mp4");
+      assertEquals(
+        StorageService.getExtensionFromMimeType("video/mp4"),
+        ".mp4",
+      );
     });
 
     it("should return .mp3 for audio/mpeg", () => {

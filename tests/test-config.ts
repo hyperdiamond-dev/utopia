@@ -130,7 +130,11 @@ export class MockSqlClient {
 }
 
 import type { User } from "../db/users.ts";
-import type { Module, ModuleStatus, UserModuleProgress } from "../db/modules.ts";
+import type {
+  Module,
+  ModuleStatus,
+  UserModuleProgress,
+} from "../db/modules.ts";
 
 // Helper to create test users
 export function createTestUser(

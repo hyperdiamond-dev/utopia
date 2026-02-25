@@ -137,7 +137,9 @@ export class StorageService {
     mimeType: string,
   ): string | null {
     if (fileSize > MAX_FILE_SIZE) {
-      return `File size ${(fileSize / 1024 / 1024).toFixed(1)}MB exceeds maximum of ${MAX_FILE_SIZE / 1024 / 1024}MB`;
+      return `File size ${
+        (fileSize / 1024 / 1024).toFixed(1)
+      }MB exceeds maximum of ${MAX_FILE_SIZE / 1024 / 1024}MB`;
     }
 
     if (fileSize === 0) {
@@ -145,7 +147,9 @@ export class StorageService {
     }
 
     if (!ALLOWED_MIME_TYPES.includes(mimeType as AllowedMimeType)) {
-      return `File type "${mimeType}" is not allowed. Allowed types: ${ALLOWED_MIME_TYPES.join(", ")}`;
+      return `File type "${mimeType}" is not allowed. Allowed types: ${
+        ALLOWED_MIME_TYPES.join(", ")
+      }`;
     }
 
     return null;

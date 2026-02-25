@@ -41,20 +41,28 @@ async function getUserRecord(c: { get: (key: string) => unknown }) {
  */
 async function isQuestionReadOnly(
   userId: number,
-  question: { module_id: number | null; submodule_id: number | null },
+  questionId: number,
 ): Promise<boolean> {
-  if (question.submodule_id) {
+  const submoduleId = await questionRepository.getSubmoduleIdForQuestion(
+    questionId,
+  );
+  if (submoduleId) {
     const progress = await submoduleRepository.getUserSubmoduleProgress(
       userId,
-      question.submodule_id,
+      submoduleId,
     );
     if (progress?.status === "COMPLETED") return true;
-  } else if (question.module_id) {
-    const progress = await moduleRepository.getUserModuleProgress(
-      userId,
-      question.module_id,
+  } else {
+    const moduleId = await questionRepository.getModuleIdForQuestion(
+      questionId,
     );
-    if (progress?.status === "COMPLETED") return true;
+    if (moduleId) {
+      const progress = await moduleRepository.getUserModuleProgress(
+        userId,
+        moduleId,
+      );
+      if (progress?.status === "COMPLETED") return true;
+    }
   }
   return false;
 }
@@ -84,7 +92,7 @@ uploads.post(
       }
 
       // Check if module/submodule is completed (read-only)
-      if (await isQuestionReadOnly(userRecord.id, question)) {
+      if (await isQuestionReadOnly(userRecord.id, questionId)) {
         return c.json(
           { error: "Cannot upload to a completed module" },
           403,
@@ -266,7 +274,7 @@ uploads.delete(
       const question = await questionRepository.getQuestionById(
         upload.question_id,
       );
-      if (question && await isQuestionReadOnly(userRecord.id, question)) {
+      if (question && await isQuestionReadOnly(userRecord.id, question.id)) {
         return c.json(
           { error: "Cannot delete uploads from a completed module" },
           403,

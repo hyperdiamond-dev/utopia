@@ -33,13 +33,19 @@ content.get("/submodule/:submoduleId", authMiddleware, async (c) => {
     return c.json({ error: "Invalid submodule ID" }, 400);
   }
 
-  const items =
-    await moduleContentRepository.getContentBySubmoduleId(submoduleId);
+  const items = await moduleContentRepository.getContentBySubmoduleId(
+    submoduleId,
+  );
   return c.json({ content: items });
 });
 
 // Create content (admin use)
 content.post("/", authMiddleware, async (c) => {
+  const adminSecret = c.req.header("x-admin-secret");
+  if (!adminSecret || adminSecret !== Deno.env.get("ADMIN_SECRET")) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
   const body = await c.req.json();
 
   const {
@@ -94,8 +100,13 @@ content.post("/", authMiddleware, async (c) => {
   return c.json({ content: item }, 201);
 });
 
-// Delete content
+// Delete content (admin use)
 content.delete("/:id", authMiddleware, async (c) => {
+  const adminSecret = c.req.header("x-admin-secret");
+  if (!adminSecret || adminSecret !== Deno.env.get("ADMIN_SECRET")) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) {
     return c.json({ error: "Invalid content ID" }, 400);

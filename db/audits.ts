@@ -5,7 +5,11 @@ export type EventType =
   | "LOGOUT"
   | "CONSENT"
   | "MODULE_START"
-  | "MODULE_COMPLETION";
+  | "MODULE_COMPLETION"
+  | "PATH_START"
+  | "PATH_COMPLETION"
+  | "PATH_UNLOCK"
+  | "PATH_ACCESS_DENIED";
 
 // Define a more specific type for audit details
 export type AuditDetails = Record<string, string | number | boolean | null>;
