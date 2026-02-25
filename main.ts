@@ -6,13 +6,19 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
 import { authMiddleware } from "./middleware/auth.ts";
-import { globalRateLimit } from "./middleware/rateLimit.ts";
+import {
+  authRateLimit,
+  globalRateLimit,
+  strictRateLimit,
+} from "./middleware/rateLimit.ts";
 import { auth } from "./routes/auth.ts";
 import { consent } from "./routes/consent.ts";
 import { modules } from "./routes/modules.ts";
 import { paths } from "./routes/paths.ts";
 import submodules from "./routes/submodules.ts";
 import questions from "./routes/questions.ts";
+import { uploads } from "./routes/upload.ts";
+import { content } from "./routes/content.ts";
 
 interface AppContext extends Env {
   Variables: {
@@ -35,25 +41,12 @@ app.use(
   }),
 );
 
-// Debug middleware to log request details
-app.use("*", async (c, next) => {
-  const start = Date.now();
-  console.log(`\n� === DEBUG INFO ===`);
-  console.log(`� ${c.req.method} ${c.req.url}`);
-  console.log(`🌐 User-Agent: ${c.req.header("user-agent") || "Unknown"}`);
-  console.log(
-    `� Authorization: ${c.req.header("authorization") ? "Present" : "Missing"}`,
-  );
-  console.log(
-    `� Content-Type: ${c.req.header("content-type") || "Not specified"}`,
-  );
+// Auth route rate limiting
+// @ts-ignore - TypeScript compatibility issue with hono-rate-limiter
+app.use("/api/auth/login", authRateLimit);
+// @ts-ignore - TypeScript compatibility issue with hono-rate-limiter
+app.use("/api/auth/create-anonymous", strictRateLimit);
 
-  await next();
-
-  const ms = Date.now() - start;
-  console.log(`📤 Response: ${c.res.status} (${ms}ms)`);
-  console.log(`🔍 === END DEBUG ===\n`);
-});
 app.use(
   "*",
   cors({
@@ -80,6 +73,12 @@ app.route("/api/modules", submodules);
 
 // Question routes (protected)
 app.route("/api", questions);
+
+// Upload routes (protected)
+app.route("/api/upload", uploads);
+
+// Content routes (media content for modules/submodules)
+app.route("/api/content", content);
 
 // Protected routes example
 app.get("/api/profile", authMiddleware, (c) => {

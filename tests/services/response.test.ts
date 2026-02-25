@@ -1,6 +1,9 @@
 /**
- * Response Service Tests
- * Tests for question response submission, validation, and batch operations
+ * Response Handling Tests
+ * Tests for Zod schema validation and response data flow through ModuleService
+ * Since there is no standalone ResponseService, this tests:
+ * 1. The Zod validation schemas used by module routes
+ * 2. Response data handling in ModuleService.saveModuleProgress() and completeModule()
  */
 
 import {
@@ -8,419 +11,326 @@ import {
   assertEquals,
   assertExists,
   beforeEach,
-  createStub,
+  createTestModule,
+  createTestModuleProgress,
   describe,
   it,
+  restore,
   restoreEnv,
   setupTestEnv,
-} from "../test-config-extended.ts";
+  stubMethod as stub,
+} from "../test-config.ts";
 
-// Response value types
-type ResponseValue = boolean | string | string[] | number | null;
+import { z } from "zod";
 
-// Question types
-type QuestionType = "true_false" | "multiple_choice" | "fill_blank" | "free_form";
+// Set env before dynamic imports that trigger db/connection.ts
+setupTestEnv();
 
-// Helper to create test questions
-function createTestQuestion(overrides: Partial<{
-  id: number;
-  question_text: string;
-  question_type: QuestionType;
-  is_required: boolean;
-  module_id: number | null;
-  submodule_id: number | null;
-  metadata: Record<string, unknown>;
-}> = {}) {
-  return {
-    id: 1,
-    question_text: "Test question?",
-    question_type: "multiple_choice" as QuestionType,
-    is_required: true,
-    module_id: 1,
-    submodule_id: null,
-    metadata: { options: ["Option A", "Option B", "Option C"] },
-    ...overrides,
-  };
-}
+const { ModuleService } = await import("../../services/moduleService.ts");
+const { auditRepository, moduleRepository, userRepository } = await import(
+  "../../db/index.ts"
+);
 
-// Helper to create test responses
-function createTestResponse(overrides: Partial<{
-  id: number;
-  user_id: number;
-  question_id: number;
-  response_value: ResponseValue;
-  module_id: number | null;
-  submodule_id: number | null;
-  answered_at: Date;
-}> = {}) {
-  return {
-    id: 1,
-    user_id: 1,
-    question_id: 1,
-    response_value: "Option A",
-    module_id: 1,
-    submodule_id: null,
-    answered_at: new Date(),
-    ...overrides,
-  };
-}
+// Recreate the Zod schemas used in routes/modules.ts (not exported)
+const moduleResponseSchema = z.object({
+  responses: z.record(z.unknown()),
+  metadata: z.record(z.unknown()).optional(),
+});
 
-// Mock repositories
-const mockQuestionRepository = {
-  getQuestionById: createStub(),
-  getUserResponse: createStub(),
-  upsertUserResponse: createStub(),
-  batchUpsertResponses: createStub(),
-  validateResponse: createStub(),
-  areAllRequiredQuestionsAnswered: createStub(),
-  getQuestionsWithResponsesForModule: createStub(),
-  getQuestionsWithResponsesForSubmodule: createStub(),
-};
+const partialResponseSchema = z.object({
+  responses: z.record(z.unknown()),
+});
 
-describe("Response Service", () => {
+describe("Response Validation Schemas", () => {
+  describe("moduleResponseSchema", () => {
+    it("should accept valid submission with responses and metadata", () => {
+      const input = {
+        responses: { q1: "answer1", q2: true, q3: ["a", "b"] },
+        metadata: { submitted_from: "web", duration_seconds: 120 },
+      };
+
+      const result = moduleResponseSchema.safeParse(input);
+
+      assertEquals(result.success, true);
+      if (result.success) {
+        assertEquals(Object.keys(result.data.responses).length, 3);
+        assertExists(result.data.metadata);
+      }
+    });
+
+    it("should accept valid submission without metadata", () => {
+      const input = {
+        responses: { q1: "answer1" },
+      };
+
+      const result = moduleResponseSchema.safeParse(input);
+
+      assertEquals(result.success, true);
+    });
+
+    it("should reject submission without responses field", () => {
+      const input = { metadata: { source: "web" } };
+
+      const result = moduleResponseSchema.safeParse(input);
+
+      assertEquals(result.success, false);
+    });
+
+    it("should reject empty body", () => {
+      const result = moduleResponseSchema.safeParse({});
+
+      assertEquals(result.success, false);
+    });
+
+    it("should reject null body", () => {
+      const result = moduleResponseSchema.safeParse(null);
+
+      assertEquals(result.success, false);
+    });
+
+    it("should accept responses with various value types", () => {
+      const input = {
+        responses: {
+          text_response: "A text answer",
+          boolean_response: true,
+          number_response: 42,
+          array_response: ["opt1", "opt2"],
+          null_response: null,
+          nested_response: { key: "value" },
+        },
+      };
+
+      const result = moduleResponseSchema.safeParse(input);
+
+      assertEquals(result.success, true);
+    });
+  });
+
+  describe("partialResponseSchema", () => {
+    it("should accept valid partial responses", () => {
+      const input = {
+        responses: { q1: "partial answer" },
+      };
+
+      const result = partialResponseSchema.safeParse(input);
+
+      assertEquals(result.success, true);
+    });
+
+    it("should reject empty body", () => {
+      const result = partialResponseSchema.safeParse({});
+
+      assertEquals(result.success, false);
+    });
+
+    it("should reject body with wrong field name", () => {
+      const input = { answers: { q1: "a" } };
+
+      const result = partialResponseSchema.safeParse(input);
+
+      assertEquals(result.success, false);
+    });
+
+    it("should accept empty responses object", () => {
+      const input = { responses: {} };
+
+      const result = partialResponseSchema.safeParse(input);
+
+      assertEquals(result.success, true);
+    });
+  });
+});
+
+describe("Response Data Flow Through ModuleService", () => {
   let originalEnv: Record<string, string>;
 
   beforeEach(() => {
     originalEnv = setupTestEnv();
-    mockQuestionRepository.getQuestionById.resolves(createTestQuestion());
-    mockQuestionRepository.validateResponse.resolves({ valid: true });
   });
 
   afterEach(() => {
+    restore();
     restoreEnv(originalEnv);
   });
 
-  describe("Response Validation", () => {
-    it("should validate true/false responses", () => {
-      const validResponses: ResponseValue[] = [true, false];
-      const invalidResponses: ResponseValue[] = ["yes", "no", 1, 0];
+  describe("saveModuleProgress response data", () => {
+    it("should pass response data with last_saved timestamp to repository", async () => {
+      const testModule = createTestModule({ id: 2, name: "module-1" });
+      const progress = createTestModuleProgress({ status: "IN_PROGRESS" });
+      const responseData = { q1: "answer1", q2: true };
 
-      for (const response of validResponses) {
-        assertEquals(typeof response === "boolean", true);
-      }
-
-      for (const response of invalidResponses) {
-        assertEquals(typeof response === "boolean", false);
-      }
-    });
-
-    it("should validate multiple choice responses", () => {
-      const question = createTestQuestion({
-        question_type: "multiple_choice",
-        metadata: { options: ["A", "B", "C"] },
-      });
-
-      const validOptions = question.metadata.options as string[];
-      const validResponse = "A";
-      const invalidResponse = "D";
-
-      assertEquals(validOptions.includes(validResponse), true);
-      assertEquals(validOptions.includes(invalidResponse), false);
-    });
-
-    it("should validate fill_blank responses as strings", () => {
-      const validResponse = "User's answer";
-      const invalidResponse = 123;
-
-      assertEquals(typeof validResponse === "string", true);
-      assertEquals(typeof invalidResponse === "string", false);
-    });
-
-    it("should validate free_form responses as strings", () => {
-      const validResponse =
-        "This is a longer free-form response from the user.";
-
-      assertEquals(typeof validResponse === "string", true);
-      assertEquals(validResponse.length > 0, true);
-    });
-
-    it("should reject null responses for required questions", () => {
-      const question = createTestQuestion({ is_required: true });
-      const nullResponse: ResponseValue = null;
-
-      const isValid = question.is_required ? nullResponse !== null : true;
-      assertEquals(isValid, false);
-    });
-
-    it("should accept null responses for optional questions", () => {
-      const question = createTestQuestion({ is_required: false });
-      const nullResponse: ResponseValue = null;
-
-      const isValid = question.is_required ? nullResponse !== null : true;
-      assertEquals(isValid, true);
-    });
-  });
-
-  describe("Single Response Submission", () => {
-    it("should create new response for first submission", () => {
-      const existingResponse = null;
-      const newResponse = createTestResponse();
-
-      const isNewSubmission = existingResponse === null;
-      assertEquals(isNewSubmission, true);
-      assertExists(newResponse.id);
-    });
-
-    it("should update existing response (upsert behavior)", () => {
-      const existingResponse = createTestResponse({
-        response_value: "Old answer",
-      });
-      const updatedValue = "New answer";
-
-      const updatedResponse = {
-        ...existingResponse,
-        response_value: updatedValue,
-      };
-
-      assertEquals(updatedResponse.response_value, "New answer");
-      assertEquals(updatedResponse.id, existingResponse.id);
-    });
-
-    it("should set answered_at timestamp", () => {
-      const response = createTestResponse();
-
-      assertExists(response.answered_at);
-      assertEquals(response.answered_at instanceof Date, true);
-    });
-
-    it("should reject response for non-existent question", () => {
-      const question = null;
-      const canSubmit = question !== null;
-
-      assertEquals(canSubmit, false);
-    });
-  });
-
-  describe("Read-Only Protection", () => {
-    it("should prevent modification of completed module responses", () => {
-      const moduleProgress = { status: "COMPLETED" };
-      const isReadOnly = moduleProgress.status === "COMPLETED";
-
-      assertEquals(isReadOnly, true);
-    });
-
-    it("should prevent modification of completed submodule responses", () => {
-      const submoduleProgress = { status: "COMPLETED" };
-      const isReadOnly = submoduleProgress.status === "COMPLETED";
-
-      assertEquals(isReadOnly, true);
-    });
-
-    it("should allow modification of in-progress module responses", () => {
-      const moduleProgress = { status: "IN_PROGRESS" };
-      const isReadOnly = moduleProgress.status === "COMPLETED";
-
-      assertEquals(isReadOnly, false);
-    });
-  });
-
-  describe("Batch Response Submission", () => {
-    it("should validate all responses before saving", () => {
-      const submissions = [
-        { question_id: 1, response_value: "Answer 1" },
-        { question_id: 2, response_value: true },
-        { question_id: 3, response_value: "Answer 3" },
-      ];
-
-      // All should be validated
-      assertEquals(submissions.length, 3);
-    });
-
-    it("should return validation errors without saving any", () => {
-      const validationResult = {
-        valid: false,
-        errors: {
-          2: "Invalid response type for true/false question",
-          3: "Question not found",
-        },
-      };
-
-      assertEquals(validationResult.valid, false);
-      assertEquals(Object.keys(validationResult.errors).length, 2);
-    });
-
-    it("should save all responses when validation passes", () => {
-      const submissions = [
-        { question_id: 1, response_value: "A" },
-        { question_id: 2, response_value: true },
-      ];
-
-      const savedResponses = submissions.map((s, i) =>
-        createTestResponse({
-          id: i + 1,
-          question_id: s.question_id,
-          response_value: s.response_value,
-        })
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(testModule),
+      );
+      stub(moduleRepository, "isModuleAccessible", () => Promise.resolve(true));
+      stub(
+        moduleRepository,
+        "getUserModuleProgress",
+        () => Promise.resolve(progress),
+      );
+      const updateStub = stub(
+        moduleRepository,
+        "updateModuleResponse",
+        () =>
+          Promise.resolve(
+            createTestModuleProgress({ response_data: responseData }),
+          ),
       );
 
-      assertEquals(savedResponses.length, 2);
-    });
+      await ModuleService.saveModuleProgress(1, "module-1", responseData);
 
-    it("should associate responses with module_id", () => {
-      const submission = {
-        responses: [{ question_id: 1, response_value: "A" }],
-        module_id: 5,
-      };
+      assertEquals(updateStub.calls.length, 1);
+      assertEquals(updateStub.calls[0].args[0], 1); // userId
+      assertEquals(updateStub.calls[0].args[1], 2); // moduleId
 
-      assertEquals(submission.module_id, 5);
-    });
-
-    it("should associate responses with submodule_id", () => {
-      const submission = {
-        responses: [{ question_id: 1, response_value: "A" }],
-        submodule_id: 10,
-      };
-
-      assertEquals(submission.submodule_id, 10);
-    });
-  });
-
-  describe("Module Question Validation", () => {
-    it("should detect unanswered required questions", () => {
-      const questions = [
-        { id: 1, is_required: true, user_response: { response_value: "A" } },
-        { id: 2, is_required: true, user_response: null },
-        { id: 3, is_required: false, user_response: null },
-      ];
-
-      const unansweredRequired = questions.filter(
-        (q) => q.is_required && !q.user_response,
-      );
-
-      assertEquals(unansweredRequired.length, 1);
-      assertEquals(unansweredRequired[0].id, 2);
-    });
-
-    it("should pass validation when all required questions answered", () => {
-      const questions = [
-        { id: 1, is_required: true, user_response: { response_value: "A" } },
-        { id: 2, is_required: true, user_response: { response_value: true } },
-        { id: 3, is_required: false, user_response: null },
-      ];
-
-      const allRequiredAnswered = questions.every(
-        (q) => !q.is_required || q.user_response !== null,
-      );
-
-      assertEquals(allRequiredAnswered, true);
-    });
-
-    it("should validate individual response values during module validation", () => {
-      const questions = [
-        {
-          id: 1,
-          question_type: "true_false",
-          user_response: { response_value: "not a boolean" },
-        },
-      ];
-
-      const hasInvalidResponses = questions.some((q) => {
-        if (q.question_type === "true_false" && q.user_response) {
-          return typeof q.user_response.response_value !== "boolean";
-        }
-        return false;
-      });
-
-      assertEquals(hasInvalidResponses, true);
-    });
-  });
-
-  describe("Response Retrieval", () => {
-    it("should get user response for specific question", () => {
-      const response = createTestResponse({
-        user_id: 1,
-        question_id: 5,
-      });
-
-      assertEquals(response.user_id, 1);
-      assertEquals(response.question_id, 5);
-    });
-
-    it("should get all responses for a module", () => {
-      const moduleResponses = [
-        createTestResponse({ id: 1, module_id: 2 }),
-        createTestResponse({ id: 2, module_id: 2 }),
-        createTestResponse({ id: 3, module_id: 2 }),
-      ];
-
-      assertEquals(moduleResponses.length, 3);
-      assertEquals(moduleResponses.every((r) => r.module_id === 2), true);
-    });
-
-    it("should get all responses for a submodule", () => {
-      const submoduleResponses = [
-        createTestResponse({ id: 1, submodule_id: 5 }),
-        createTestResponse({ id: 2, submodule_id: 5 }),
-      ];
-
-      assertEquals(submoduleResponses.length, 2);
+      const savedData = updateStub.calls[0].args[2] as Record<string, unknown>;
       assertEquals(
-        submoduleResponses.every((r) => r.submodule_id === 5),
-        true,
+        (savedData.responses as Record<string, unknown>).q1,
+        "answer1",
       );
+      assertEquals((savedData.responses as Record<string, unknown>).q2, true);
+      assertExists(savedData.last_saved);
+      // last_saved should be an ISO string
+      assertEquals(typeof savedData.last_saved, "string");
+    });
+
+    it("should preserve all response values on save", async () => {
+      const testModule = createTestModule({ id: 2, name: "module-1" });
+      const progress = createTestModuleProgress({ status: "IN_PROGRESS" });
+      const complexResponses = {
+        text_field: "Long text response here",
+        boolean_field: false,
+        multi_select: ["option1", "option3"],
+        numeric_field: 7,
+      };
+
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(testModule),
+      );
+      stub(moduleRepository, "isModuleAccessible", () => Promise.resolve(true));
+      stub(
+        moduleRepository,
+        "getUserModuleProgress",
+        () => Promise.resolve(progress),
+      );
+      const updateStub = stub(
+        moduleRepository,
+        "updateModuleResponse",
+        () =>
+          Promise.resolve(
+            createTestModuleProgress({ response_data: complexResponses }),
+          ),
+      );
+
+      await ModuleService.saveModuleProgress(1, "module-1", complexResponses);
+
+      const savedData = updateStub.calls[0].args[2] as Record<string, unknown>;
+      const responses = savedData.responses as Record<string, unknown>;
+      assertEquals(responses.text_field, "Long text response here");
+      assertEquals(responses.boolean_field, false);
+      assertEquals(responses.multi_select, ["option1", "option3"]);
+      assertEquals(responses.numeric_field, 7);
     });
   });
 
-  describe("Response Deletion", () => {
-    it("should allow deletion of non-completed module responses", () => {
-      const moduleProgress = { status: "IN_PROGRESS" };
-      const canDelete = moduleProgress.status !== "COMPLETED";
-
-      assertEquals(canDelete, true);
-    });
-
-    it("should prevent deletion of completed module responses", () => {
-      const moduleProgress = { status: "COMPLETED" };
-      const canDelete = moduleProgress.status !== "COMPLETED";
-
-      assertEquals(canDelete, false);
-    });
-
-    it("should return true when response exists and is deleted", () => {
-      const existingResponse = createTestResponse();
-      const wasDeleted = existingResponse !== null;
-
-      assertEquals(wasDeleted, true);
-    });
-  });
-
-  describe("Question Types", () => {
-    it("should handle multiple_choice with multiple selections", () => {
-
-      const multipleSelections: ResponseValue = ["A", "C"];
-
-      assertEquals(Array.isArray(multipleSelections), true);
-      if (Array.isArray(multipleSelections)) {
-        assertEquals(multipleSelections.length, 2);
-      }
-    });
-
-    it("should enforce min/max length for fill_blank", () => {
-      const question = createTestQuestion({
-        question_type: "fill_blank",
-        metadata: { min_length: 5, max_length: 100 },
+  describe("completeModule response data", () => {
+    it("should pass submission data with completed_at timestamp to repository", async () => {
+      const testModule = createTestModule({
+        id: 2,
+        name: "module-1",
+        sequence_order: 2,
       });
+      const submissionData = {
+        responses: { q1: "final_answer", q2: true },
+        metadata: { duration: 300 },
+      };
 
-      const metadata = question.metadata as { min_length: number; max_length: number };
-      const validResponse = "Valid response";
-      const tooShort = "Hi";
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(testModule),
+      );
+      stub(moduleRepository, "isModuleAccessible", () => Promise.resolve(true));
+      const completeStub = stub(
+        moduleRepository,
+        "completeModule",
+        () =>
+          Promise.resolve(
+            createTestModuleProgress({
+              status: "COMPLETED",
+              completed_at: new Date(),
+            }),
+          ),
+      );
+      stub(
+        moduleRepository,
+        "getNextAccessibleModule",
+        () => Promise.resolve(null),
+      );
+      stub(auditRepository, "logModuleCompletion", () => Promise.resolve());
+      stub(userRepository, "setActiveModule", () => Promise.resolve());
 
-      assertEquals(validResponse.length >= metadata.min_length, true);
-      assertEquals(validResponse.length <= metadata.max_length, true);
-      assertEquals(tooShort.length >= metadata.min_length, false);
+      await ModuleService.completeModule(1, "module-1", submissionData);
+
+      assertEquals(completeStub.calls.length, 1);
+      const passedData = completeStub.calls[0].args[2] as Record<
+        string,
+        unknown
+      >;
+      assertExists(passedData.completed_at);
+      assertEquals(typeof passedData.completed_at, "string"); // ISO string
+      assertEquals(
+        (passedData.responses as Record<string, unknown>).q1,
+        "final_answer",
+      );
+      assertEquals(passedData.metadata, { duration: 300 });
     });
 
-    it("should enforce word count for free_form if specified", () => {
-      const question = createTestQuestion({
-        question_type: "free_form",
-        metadata: { min_words: 10 },
+    it("should count response keys for audit logging", async () => {
+      const testModule = createTestModule({
+        id: 2,
+        name: "module-1",
+        sequence_order: 2,
       });
+      const submissionData = {
+        responses: { q1: "a", q2: "b", q3: "c", q4: "d", q5: "e" },
+      };
 
-      const metadata = question.metadata as { min_words: number };
-      const response = "This is a response with exactly ten words in it.";
-      const wordCount = response.split(/\s+/).length;
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(testModule),
+      );
+      stub(moduleRepository, "isModuleAccessible", () => Promise.resolve(true));
+      stub(
+        moduleRepository,
+        "completeModule",
+        () =>
+          Promise.resolve(createTestModuleProgress({ status: "COMPLETED" })),
+      );
+      stub(
+        moduleRepository,
+        "getNextAccessibleModule",
+        () => Promise.resolve(null),
+      );
+      const auditStub = stub(
+        auditRepository,
+        "logModuleCompletion",
+        () => Promise.resolve(),
+      );
+      stub(userRepository, "setActiveModule", () => Promise.resolve());
 
-      assertEquals(wordCount >= metadata.min_words, true);
+      await ModuleService.completeModule(1, "module-1", submissionData);
+
+      const auditDetails = auditStub.calls[0].args[1] as Record<
+        string,
+        unknown
+      >;
+      assertEquals(auditDetails.response_count, 5);
     });
   });
 });

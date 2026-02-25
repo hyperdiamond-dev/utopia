@@ -78,7 +78,9 @@ export class UserService {
   ): Promise<AnonymousUser | null> {
     try {
       // Find user by custom claims (search through Firebase users)
-      const listUsersResult = await auth.listUsers(1000); // Get up to 1000 users
+      // TODO: listUsers(1000) only fetches the first page.
+      // If user count exceeds 1000, implement pagination using nextPageToken.
+      const listUsersResult = await auth.listUsers(1000);
 
       // Find user with matching friendlyAlias in custom claims
       const userRecord = listUsersResult.users.find((user) => {
@@ -165,7 +167,8 @@ export class UserService {
 
   private static async aliasExists(alias: string): Promise<boolean> {
     try {
-      // Check if alias exists in Firebase custom claims
+      // TODO: listUsers(1000) only fetches the first page.
+      // If user count exceeds 1000, implement pagination using nextPageToken.
       const listUsersResult = await auth.listUsers(1000);
 
       return listUsersResult.users.some((user) => {

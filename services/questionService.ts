@@ -100,12 +100,20 @@ export class QuestionService {
       throw new Error("Question not found");
     }
 
+    // Look up module/submodule association via junction tables
+    const submoduleId = await questionRepository.getSubmoduleIdForQuestion(
+      questionId,
+    );
+    const moduleId = submoduleId
+      ? null
+      : await questionRepository.getModuleIdForQuestion(questionId);
+
     // Check if the module/submodule is already completed (read-only)
-    if (question.submodule_id) {
+    if (submoduleId) {
       const submoduleProgress = await submoduleRepository
         .getUserSubmoduleProgress(
           userId,
-          question.submodule_id,
+          submoduleId,
         );
 
       if (submoduleProgress?.status === "COMPLETED") {
@@ -113,10 +121,10 @@ export class QuestionService {
           "Submodule is read-only - completed submodules cannot be modified",
         );
       }
-    } else if (question.module_id) {
+    } else if (moduleId) {
       const moduleProgress = await moduleRepository.getUserModuleProgress(
         userId,
-        question.module_id,
+        moduleId,
       );
 
       if (moduleProgress?.status === "COMPLETED") {
@@ -141,16 +149,16 @@ export class QuestionService {
       userId,
       questionId,
       responseValue,
-      question.module_id,
-      question.submodule_id,
+      moduleId,
+      submoduleId,
     );
 
     // Log audit event
     await auditRepository.logModuleStart(userId, {
       action: "question_answered",
       question_id: questionId,
-      module_id: question.module_id,
-      submodule_id: question.submodule_id,
+      module_id: moduleId,
+      submodule_id: submoduleId,
     });
 
     return response;
@@ -388,12 +396,20 @@ export class QuestionService {
       throw new Error("Question not found");
     }
 
+    // Look up module/submodule association via junction tables
+    const submoduleId = await questionRepository.getSubmoduleIdForQuestion(
+      questionId,
+    );
+    const moduleId = submoduleId
+      ? null
+      : await questionRepository.getModuleIdForQuestion(questionId);
+
     // Check if the module/submodule is already completed (read-only)
-    if (question.submodule_id) {
+    if (submoduleId) {
       const submoduleProgress = await submoduleRepository
         .getUserSubmoduleProgress(
           userId,
-          question.submodule_id,
+          submoduleId,
         );
 
       if (submoduleProgress?.status === "COMPLETED") {
@@ -401,10 +417,10 @@ export class QuestionService {
           "Submodule is read-only - completed submodules cannot be modified",
         );
       }
-    } else if (question.module_id) {
+    } else if (moduleId) {
       const moduleProgress = await moduleRepository.getUserModuleProgress(
         userId,
-        question.module_id,
+        moduleId,
       );
 
       if (moduleProgress?.status === "COMPLETED") {
@@ -422,9 +438,11 @@ export class QuestionService {
    */
   static async createQuestion(
     data: Omit<Question, "id" | "created_at" | "updated_at" | "is_active">,
+    moduleId?: number,
+    submoduleId?: number,
   ): Promise<Question> {
     // Validate that question belongs to either module or submodule
-    if (!data.module_id && !data.submodule_id) {
+    if (!moduleId && !submoduleId) {
       throw new Error("Question must belong to a module or submodule");
     }
 
@@ -439,7 +457,7 @@ export class QuestionService {
       throw new Error(`Invalid question type: ${data.question_type}`);
     }
 
-    return await questionRepository.createQuestion(data);
+    return await questionRepository.createQuestion(data, moduleId, submoduleId);
   }
 
   /**

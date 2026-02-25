@@ -24,7 +24,9 @@ export class PathService {
   /**
    * Get all paths with user progress and accessibility information
    */
-  static async getUserPathOverview(userId: number): Promise<PathWithProgress[]> {
+  static async getUserPathOverview(
+    userId: number,
+  ): Promise<PathWithProgress[]> {
     return await pathRepository.getPathsWithProgress(userId);
   }
 
@@ -33,7 +35,7 @@ export class PathService {
    */
   static async checkPathAccess(
     userId: number,
-    pathName: string
+    pathName: string,
   ): Promise<PathAccessResult> {
     const path = await pathRepository.getPathByName(pathName);
     if (!path) {
@@ -48,7 +50,8 @@ export class PathService {
     if (!accessible) {
       return {
         accessible: false,
-        reason: "Path not accessible - unlock via branching rules or complete prerequisites",
+        reason:
+          "Path not accessible - unlock via branching rules or complete prerequisites",
         path,
       };
     }
@@ -62,7 +65,7 @@ export class PathService {
   static async startPath(
     userId: number,
     pathName: string,
-    unlockedByRuleId?: number
+    unlockedByRuleId?: number,
   ): Promise<UserPathProgress> {
     const path = await pathRepository.getPathByName(pathName);
     if (!path) {
@@ -76,7 +79,11 @@ export class PathService {
     }
 
     // Start the path
-    const progress = await pathRepository.startPath(userId, path.id, unlockedByRuleId);
+    const progress = await pathRepository.startPath(
+      userId,
+      path.id,
+      unlockedByRuleId,
+    );
 
     // Log audit event
     await auditRepository.createAudit("PATH_START", userId, {
@@ -95,7 +102,7 @@ export class PathService {
    */
   static async completePath(
     userId: number,
-    pathName: string
+    pathName: string,
   ): Promise<UserPathProgress> {
     const path = await pathRepository.getPathByName(pathName);
     if (!path) {
@@ -130,22 +137,29 @@ export class PathService {
    */
   static async evaluatePathUnlocks(
     userId: number,
-    completedPathId: number
+    completedPathId: number,
   ): Promise<Path[]> {
     // Import branching rules dynamically to avoid circular dependency
     const { branchingRuleRepository } = await import("../db/branchingRules.ts");
 
     // Get rules that have this path as a source
-    const rules = await branchingRuleRepository.getRulesBySourcePath(completedPathId);
+    const rules = await branchingRuleRepository.getRulesBySourcePath(
+      completedPathId,
+    );
     const unlockedPaths: Path[] = [];
 
     for (const rule of rules) {
       if (!rule.target_path_id || !rule.is_active) continue;
 
       // Evaluate the rule
-      const result = await branchingRuleRepository.evaluateSingleRule(rule, userId);
+      const result = await branchingRuleRepository.evaluateSingleRule(
+        rule,
+        userId,
+      );
       if (result.unlocked) {
-        const targetPath = await pathRepository.getPathById(rule.target_path_id);
+        const targetPath = await pathRepository.getPathById(
+          rule.target_path_id,
+        );
         if (targetPath) {
           await pathRepository.unlockPath(userId, rule.target_path_id, rule.id);
           unlockedPaths.push(targetPath);
@@ -169,15 +183,17 @@ export class PathService {
    */
   static async getPathForUser(
     userId: number,
-    pathName: string
-  ): Promise<{
-    path: Path;
-    progress: UserPathProgress | null;
-    accessible: boolean;
-    isCompleted: boolean;
-    canReview: boolean;
-    modules: PathWithModules["modules"];
-  } | null> {
+    pathName: string,
+  ): Promise<
+    {
+      path: Path;
+      progress: UserPathProgress | null;
+      accessible: boolean;
+      isCompleted: boolean;
+      canReview: boolean;
+      modules: PathWithModules["modules"];
+    } | null
+  > {
     const path = await pathRepository.getPathByName(pathName);
     if (!path) return null;
 
@@ -205,7 +221,7 @@ export class PathService {
   static async getPathModulesForUser(
     // deno-lint-ignore no-unused-vars
     userId: number,
-    pathName: string
+    pathName: string,
   ): Promise<PathWithModules["modules"]> {
     const path = await pathRepository.getPathByName(pathName);
     if (!path) {
@@ -249,7 +265,7 @@ export class PathService {
    */
   static async getChildPaths(
     userId: number,
-    parentPathName: string
+    parentPathName: string,
   ): Promise<PathWithProgress[]> {
     const parentPath = await pathRepository.getPathByName(parentPathName);
     if (!parentPath) {
@@ -264,7 +280,10 @@ export class PathService {
 
     for (const child of children) {
       const progress = progressMap.get(child.id);
-      const accessible = await pathRepository.isPathAccessible(userId, child.id);
+      const accessible = await pathRepository.isPathAccessible(
+        userId,
+        child.id,
+      );
 
       childrenWithProgress.push({
         ...child,
@@ -279,7 +298,9 @@ export class PathService {
   /**
    * Get the path navigation state for a user
    */
-  static async getNavigationState(userId: number): Promise<PathNavigationState> {
+  static async getNavigationState(
+    userId: number,
+  ): Promise<PathNavigationState> {
     const paths = await pathRepository.getPathsWithProgress(userId);
     const stats = await pathRepository.getUserPathCompletionStats(userId);
     const currentPaths = await pathRepository.getUserActivePaths(userId);
@@ -308,7 +329,7 @@ export class PathService {
   static async logAccessDenied(
     userId: number,
     pathName: string,
-    reason: string
+    reason: string,
   ): Promise<void> {
     const path = await pathRepository.getPathByName(pathName);
 

@@ -14,7 +14,9 @@
     "jsonwebtoken": "npm:jsonwebtoken@^9.0.2",
     "zod": "npm:zod@^3.24.1",
     "uuid": "npm:uuid@^10.0.0",
-    "hono-rate-limiter": "npm:hono-rate-limiter@^0.4.0"
+    "hono-rate-limiter": "npm:hono-rate-limiter@^0.4.0",
+    "@aws-sdk/client-s3": "npm:@aws-sdk/client-s3@^3.500.0",
+    "@aws-sdk/s3-request-presigner": "npm:@aws-sdk/s3-request-presigner@^3.500.0"
   },
   "tasks": {
     "start": "deno run --allow-net --allow-read --allow-write --allow-env main.ts",
@@ -42,6 +44,5 @@
   "compilerOptions": {
     "jsx": "precompile",
     "jsxImportSource": "hono/jsx"
-  },
-  "nodeModulesDir": "auto"
+  }
 }

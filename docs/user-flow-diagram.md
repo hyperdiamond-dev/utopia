@@ -1,6 +1,8 @@
 # Utopia User Flow Diagram
 
-This document contains the complete user flow and architecture documentation for the Utopia research platform, including modules, submodules, questions, and branching logic.
+This document contains the complete user flow and architecture documentation for
+the Utopia research platform, including modules, submodules, questions, and
+branching logic.
 
 ## Table of Contents
 
@@ -19,7 +21,8 @@ This document contains the complete user flow and architecture documentation for
 
 ### Core Concepts
 
-The Utopia platform implements a hierarchical survey system with adaptive branching:
+The Utopia platform implements a hierarchical survey system with adaptive
+branching:
 
 ```text
 Modules (Sequential)
@@ -431,50 +434,51 @@ Module: Math Assessment
 
 ### Authentication Endpoints
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/auth/create-anonymous` | Create anonymous user account | No |
-| POST | `/api/auth/login` | Login and get JWT token | No |
-| POST | `/api/auth/refresh` | Refresh JWT token | Yes |
-| GET | `/api/auth/user` | Get current user profile | Yes |
+| Method | Endpoint                     | Description                   | Auth Required |
+| ------ | ---------------------------- | ----------------------------- | ------------- |
+| POST   | `/api/auth/create-anonymous` | Create anonymous user account | No            |
+| POST   | `/api/auth/login`            | Login and get JWT token       | No            |
+| POST   | `/api/auth/refresh`          | Refresh JWT token             | Yes           |
+| GET    | `/api/auth/user`             | Get current user profile      | Yes           |
 
 ### Module Endpoints
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/modules` | Get all modules with progress | Yes |
-| GET | `/api/modules/current` | Get current active module | Yes |
-| GET | `/api/modules/:moduleName` | Get specific module details | Yes |
-| POST | `/api/modules/:moduleName/start` | Start a module | Yes |
-| POST | `/api/modules/:moduleName/save` | Save module progress | Yes |
-| POST | `/api/modules/:moduleName/complete` | Complete a module | Yes |
-| GET | `/api/modules/:moduleName/responses` | Get module responses (review) | Yes |
+| Method | Endpoint                             | Description                   | Auth Required |
+| ------ | ------------------------------------ | ----------------------------- | ------------- |
+| GET    | `/api/modules`                       | Get all modules with progress | Yes           |
+| GET    | `/api/modules/current`               | Get current active module     | Yes           |
+| GET    | `/api/modules/:moduleName`           | Get specific module details   | Yes           |
+| POST   | `/api/modules/:moduleName/start`     | Start a module                | Yes           |
+| POST   | `/api/modules/:moduleName/save`      | Save module progress          | Yes           |
+| POST   | `/api/modules/:moduleName/complete`  | Complete a module             | Yes           |
+| GET    | `/api/modules/:moduleName/responses` | Get module responses (review) | Yes           |
 
 ### Submodule Endpoints
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/submodules/:moduleName/:submoduleName` | Get submodule details | Yes |
-| POST | `/api/submodules/:moduleName/:submoduleName/start` | Start a submodule | Yes |
-| POST | `/api/submodules/:moduleName/:submoduleName/save` | Save submodule progress | Yes |
-| POST | `/api/submodules/:moduleName/:submoduleName/complete` | Complete submodule | Yes |
-| GET | `/api/submodules/:moduleName/:submoduleName/responses` | Get submodule responses | Yes |
+| Method | Endpoint                                               | Description             | Auth Required |
+| ------ | ------------------------------------------------------ | ----------------------- | ------------- |
+| GET    | `/api/submodules/:moduleName/:submoduleName`           | Get submodule details   | Yes           |
+| POST   | `/api/submodules/:moduleName/:submoduleName/start`     | Start a submodule       | Yes           |
+| POST   | `/api/submodules/:moduleName/:submoduleName/save`      | Save submodule progress | Yes           |
+| POST   | `/api/submodules/:moduleName/:submoduleName/complete`  | Complete submodule      | Yes           |
+| GET    | `/api/submodules/:moduleName/:submoduleName/responses` | Get submodule responses | Yes           |
 
 ### Question Endpoints
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/questions/modules/:moduleName/questions` | Get all questions for module | Yes |
-| GET | `/api/questions/submodules/:submoduleName/questions` | Get all questions for submodule | Yes |
-| GET | `/api/questions/:questionId` | Get specific question | Yes |
-| POST | `/api/questions/:questionId/respond` | Submit response to question | Yes |
-| POST | `/api/questions/respond/batch` | Submit multiple responses | Yes |
-| GET | `/api/questions/:questionId/response` | Get user's response | Yes |
-| DELETE | `/api/questions/:questionId/response` | Delete response (testing) | Yes |
+| Method | Endpoint                                             | Description                     | Auth Required |
+| ------ | ---------------------------------------------------- | ------------------------------- | ------------- |
+| GET    | `/api/questions/modules/:moduleName/questions`       | Get all questions for module    | Yes           |
+| GET    | `/api/questions/submodules/:submoduleName/questions` | Get all questions for submodule | Yes           |
+| GET    | `/api/questions/:questionId`                         | Get specific question           | Yes           |
+| POST   | `/api/questions/:questionId/respond`                 | Submit response to question     | Yes           |
+| POST   | `/api/questions/respond/batch`                       | Submit multiple responses       | Yes           |
+| GET    | `/api/questions/:questionId/response`                | Get user's response             | Yes           |
+| DELETE | `/api/questions/:questionId/response`                | Delete response (testing)       | Yes           |
 
 ### Admin Endpoints (Not shown in flows)
 
-Additional endpoints exist for administrative operations like creating/updating modules, submodules, questions, and branching rules.
+Additional endpoints exist for administrative operations like creating/updating
+modules, submodules, questions, and branching rules.
 
 ---
 
@@ -519,14 +523,16 @@ Requests pass through middleware in this order:
 ### 6. Module Completion Middleware
 
 - **Purpose**: Validate module can be completed
-- **File**: [middleware/moduleCompletion.ts](utopia/middleware/moduleCompletion.ts:1)
+- **File**:
+  [middleware/moduleCompletion.ts](utopia/middleware/moduleCompletion.ts:1)
 - **Applied**: Module completion endpoint
 - **Checks**: Module started, not already completed
 
 ### 7. Submodule Access Middleware
 
 - **Purpose**: Check submodule accessibility (sequential + branching)
-- **File**: [middleware/submoduleAccess.ts](utopia/middleware/submoduleAccess.ts:1)
+- **File**:
+  [middleware/submoduleAccess.ts](utopia/middleware/submoduleAccess.ts:1)
 - **Applied**: Submodule-specific routes
 - **Checks**: Parent module accessible, sequential access, branching rules
 - **Sets**: `c.get("submodule")` with submodule data
@@ -534,7 +540,8 @@ Requests pass through middleware in this order:
 ### 8. Submodule Completion Middleware
 
 - **Purpose**: Validate submodule can be completed
-- **File**: [middleware/submoduleCompletion.ts](utopia/middleware/submoduleCompletion.ts:1)
+- **File**:
+  [middleware/submoduleCompletion.ts](utopia/middleware/submoduleCompletion.ts:1)
 - **Applied**: Submodule completion endpoint
 - **Checks**: Submodule started, not completed, all required questions answered
 
@@ -663,7 +670,8 @@ When a user completes a module with submodules:
 
 When a user completes a submodule:
 
-1. **User submits completion** via POST `/api/submodules/:moduleName/:submoduleName/complete`
+1. **User submits completion** via POST
+   `/api/submodules/:moduleName/:submoduleName/complete`
 2. **Submodule Completion Middleware** validates:
    - Submodule is started
    - Submodule not already completed
@@ -765,15 +773,15 @@ When a user tries to access a submodule:
 
 ### Common Error Responses
 
-| Status | Scenario | Response |
-|--------|----------|----------|
-| 401 | Invalid/expired JWT | `{ error: "Unauthorized" }` |
-| 403 | Module not accessible | `{ error: "Module not accessible", next_module: {...} }` |
-| 403 | Submodule locked | `{ error: "Submodule not accessible" }` |
-| 400 | Module already completed | `{ error: "Module already completed - read-only" }` |
-| 400 | Invalid response type | `{ error: "Invalid response", details: {...} }` |
-| 404 | Resource not found | `{ error: "Not found" }` |
-| 500 | Server error | `{ error: "Internal server error" }` |
+| Status | Scenario                 | Response                                                 |
+| ------ | ------------------------ | -------------------------------------------------------- |
+| 401    | Invalid/expired JWT      | `{ error: "Unauthorized" }`                              |
+| 403    | Module not accessible    | `{ error: "Module not accessible", next_module: {...} }` |
+| 403    | Submodule locked         | `{ error: "Submodule not accessible" }`                  |
+| 400    | Module already completed | `{ error: "Module already completed - read-only" }`      |
+| 400    | Invalid response type    | `{ error: "Invalid response", details: {...} }`          |
+| 404    | Resource not found       | `{ error: "Not found" }`                                 |
+| 500    | Server error             | `{ error: "Internal server error" }`                     |
 
 ### Security Features
 
@@ -801,4 +809,5 @@ The Utopia platform implements a sophisticated hierarchical survey system with:
 - **Read-only enforcement** preventing data tampering
 - **Anonymous user system** protecting participant privacy
 
-This architecture supports complex research protocols while maintaining security, data integrity, and a user-friendly experience.
+This architecture supports complex research protocols while maintaining
+security, data integrity, and a user-friendly experience.

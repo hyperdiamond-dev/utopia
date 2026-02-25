@@ -1,385 +1,624 @@
 /**
  * Module Service Tests
  * Tests for module progression, access control, and completion logic
+ * Uses stub() on real repository singletons to test actual ModuleService methods
  */
 
 import {
   afterEach,
   assertEquals,
   assertExists,
+  assertRejects,
   beforeEach,
-  createStub,
   createTestModule,
   createTestModuleProgress,
-  createTestUser,
+  createTestUser as _createTestUser,
   describe,
   it,
+  restore,
   restoreEnv,
   setupTestEnv,
-} from "../test-config-extended.ts";
+  stubMethod as stub,
+} from "../test-config.ts";
 
-// Module status types
-type ModuleStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+// Set env before dynamic imports that trigger db/connection.ts
+setupTestEnv();
 
-// Mock module repository
-const mockModuleRepository = {
-  getModulesWithProgress: createStub(),
-  getModuleByName: createStub(),
-  isModuleAccessible: createStub(),
-  getNextAccessibleModule: createStub(),
-  startModule: createStub(),
-  completeModule: createStub(),
-  getUserModuleProgress: createStub(),
-  updateModuleResponse: createStub(),
-  getCurrentModule: createStub(),
-  getUserCompletionStats: createStub(),
-};
+const { ModuleService } = await import("../../services/moduleService.ts");
+const { auditRepository, moduleRepository, userRepository } = await import(
+  "../../db/index.ts"
+);
 
-// Mock audit repository
-const mockAuditRepository = {
-  logModuleStart: createStub(),
-  logModuleCompletion: createStub(),
-  createAudit: createStub(),
-};
-
-// Mock user repository
-const mockUserRepository = {
-  setActiveModule: createStub(),
-};
-
-describe("Module Service", () => {
+describe("ModuleService", () => {
   let originalEnv: Record<string, string>;
 
   beforeEach(() => {
     originalEnv = setupTestEnv();
-
-    // Reset mocks with default behaviors
-    mockModuleRepository.getModuleByName.resolves(createTestModule());
-    mockModuleRepository.isModuleAccessible.resolves(true);
-    mockModuleRepository.startModule.resolves(createTestModuleProgress());
-    mockAuditRepository.logModuleStart.resolves(undefined);
-    mockUserRepository.setActiveModule.resolves(undefined);
   });
 
   afterEach(() => {
+    restore();
     restoreEnv(originalEnv);
   });
 
-  describe("Module Access Control", () => {
-    it("should deny access to non-existent modules", () => {
-      const module = null;
-      const result = module
-        ? { accessible: true }
-        : { accessible: false, reason: "Module not found" };
+  describe("checkModuleAccess", () => {
+    it("should return inaccessible when module not found", async () => {
+      stub(moduleRepository, "getModuleByName", () => Promise.resolve(null));
+
+      const result = await ModuleService.checkModuleAccess(1, "nonexistent");
 
       assertEquals(result.accessible, false);
       assertEquals(result.reason, "Module not found");
     });
 
-    it("should deny access when previous modules incomplete", () => {
-      const previousModulesComplete = false;
-      const result = previousModulesComplete
-        ? { accessible: true }
-        : { accessible: false, reason: "Complete previous modules first" };
+    it("should return inaccessible when previous modules incomplete", async () => {
+      const testModule = createTestModule({ id: 3, name: "module-2" });
+      const nextModule = createTestModule({ id: 2, name: "module-1" });
+
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(testModule),
+      );
+      stub(
+        moduleRepository,
+        "isModuleAccessible",
+        () => Promise.resolve(false),
+      );
+      stub(
+        moduleRepository,
+        "getNextAccessibleModule",
+        () => Promise.resolve(nextModule),
+      );
+
+      const result = await ModuleService.checkModuleAccess(1, "module-2");
 
       assertEquals(result.accessible, false);
       assertEquals(result.reason, "Complete previous modules first");
+      assertEquals(result.nextModule?.name, "module-1");
     });
 
-    it("should allow access when previous modules are complete", () => {
-      const previousModulesComplete = true;
-      const result = previousModulesComplete
-        ? { accessible: true }
-        : { accessible: false };
+    it("should return accessible when module is available", async () => {
+      const testModule = createTestModule({ id: 1, name: "consent" });
+
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(testModule),
+      );
+      stub(moduleRepository, "isModuleAccessible", () => Promise.resolve(true));
+
+      const result = await ModuleService.checkModuleAccess(1, "consent");
 
       assertEquals(result.accessible, true);
-    });
-
-    it("should always allow access to consent module (first module)", () => {
-      const module = createTestModule({
-        name: "consent",
-        sequence_order: 1,
-      });
-
-      // First module (consent) should always be accessible
-      const isFirstModule = module.sequence_order === 1;
-      assertEquals(isFirstModule, true);
-    });
-
-    it("should enforce sequential module order", () => {
-      const modules = [
-        createTestModule({ name: "consent", sequence_order: 1 }),
-        createTestModule({ name: "module-1", sequence_order: 2 }),
-        createTestModule({ name: "module-2", sequence_order: 3 }),
-      ];
-
-      // Verify modules are in order
-      for (let i = 1; i < modules.length; i++) {
-        assertEquals(
-          modules[i].sequence_order > modules[i - 1].sequence_order,
-          true,
-        );
-      }
+      assertEquals(result.reason, undefined);
     });
   });
 
-  describe("Module Progression", () => {
-    it("should transition status from NOT_STARTED to IN_PROGRESS on start", () => {
-      const initialStatus: ModuleStatus = "NOT_STARTED";
-      const statusAfterStart: ModuleStatus = "IN_PROGRESS";
-
-      assertEquals(initialStatus, "NOT_STARTED");
-      assertEquals(statusAfterStart, "IN_PROGRESS");
-    });
-
-    it("should transition status from IN_PROGRESS to COMPLETED on complete", () => {
-      const statusBeforeComplete: ModuleStatus = "IN_PROGRESS";
-      const statusAfterComplete: ModuleStatus = "COMPLETED";
-
-      assertEquals(statusBeforeComplete, "IN_PROGRESS");
-      assertEquals(statusAfterComplete, "COMPLETED");
-    });
-
-    it("should set started_at timestamp when starting module", () => {
-      const progress = createTestModuleProgress({
+  describe("startModule", () => {
+    it("should start module and log audit event", async () => {
+      const testModule = createTestModule({
+        id: 2,
+        name: "module-1",
+        sequence_order: 2,
+      });
+      const testProgress = createTestModuleProgress({
         status: "IN_PROGRESS",
         started_at: new Date(),
+        module_id: 2,
       });
 
-      assertExists(progress.started_at);
-      assertEquals(progress.status, "IN_PROGRESS");
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(testModule),
+      );
+      stub(moduleRepository, "isModuleAccessible", () => Promise.resolve(true));
+      stub(
+        moduleRepository,
+        "startModule",
+        () => Promise.resolve(testProgress),
+      );
+      const auditStub = stub(
+        auditRepository,
+        "logModuleStart",
+        () => Promise.resolve(),
+      );
+      const activeModuleStub = stub(
+        userRepository,
+        "setActiveModule",
+        () => Promise.resolve(),
+      );
+
+      const result = await ModuleService.startModule(1, "module-1");
+
+      assertEquals(result.status, "IN_PROGRESS");
+      assertExists(result.started_at);
+      assertEquals(auditStub.calls.length, 1);
+      assertEquals(auditStub.calls[0].args[0], 1); // userId
+      assertEquals(
+        (auditStub.calls[0].args[1] as Record<string, unknown>).module_name,
+        "module-1",
+      );
+      assertEquals(activeModuleStub.calls.length, 1);
+      assertEquals(activeModuleStub.calls[0].args, [1, 2]); // userId, moduleId
     });
 
-    it("should set completed_at timestamp when completing module", () => {
-      const progress = createTestModuleProgress({
+    it("should throw when module not found", async () => {
+      stub(moduleRepository, "getModuleByName", () => Promise.resolve(null));
+
+      await assertRejects(
+        () => ModuleService.startModule(1, "nonexistent"),
+        Error,
+        "Module not found",
+      );
+    });
+
+    it("should throw when access denied", async () => {
+      const testModule = createTestModule({ id: 3, name: "module-2" });
+
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(testModule),
+      );
+      stub(
+        moduleRepository,
+        "isModuleAccessible",
+        () => Promise.resolve(false),
+      );
+      stub(
+        moduleRepository,
+        "getNextAccessibleModule",
+        () => Promise.resolve(null),
+      );
+
+      await assertRejects(
+        () => ModuleService.startModule(1, "module-2"),
+        Error,
+        "Complete previous modules first",
+      );
+    });
+  });
+
+  describe("completeModule", () => {
+    it("should complete module, log audit, and set next active module", async () => {
+      const testModule = createTestModule({
+        id: 2,
+        name: "module-1",
+        sequence_order: 2,
+      });
+      const completedProgress = createTestModuleProgress({
         status: "COMPLETED",
         completed_at: new Date(),
+        module_id: 2,
       });
-
-      assertExists(progress.completed_at);
-      assertEquals(progress.status, "COMPLETED");
-    });
-
-    it("should update user active_module when starting a module", () => {
-      const user = createTestUser({ active_module: null });
-      const module = createTestModule({ id: 5 });
-
-      // After starting, active_module should be set
-      const updatedUser = { ...user, active_module: module.id };
-
-      assertEquals(updatedUser.active_module, 5);
-    });
-  });
-
-  describe("Module Completion", () => {
-    it("should require submission data for completion", () => {
+      const nextModule = createTestModule({ id: 3, name: "module-2" });
       const submissionData = {
-        responses: { question1: "answer1", question2: "answer2" },
-        metadata: { completed_at: new Date().toISOString() },
+        responses: { q1: "answer1", q2: "answer2" },
+        metadata: { source: "web" },
       };
 
-      assertExists(submissionData.responses);
-      assertEquals(Object.keys(submissionData.responses).length > 0, true);
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(testModule),
+      );
+      stub(moduleRepository, "isModuleAccessible", () => Promise.resolve(true));
+      stub(
+        moduleRepository,
+        "completeModule",
+        () => Promise.resolve(completedProgress),
+      );
+      stub(
+        moduleRepository,
+        "getNextAccessibleModule",
+        () => Promise.resolve(nextModule),
+      );
+      const auditStub = stub(
+        auditRepository,
+        "logModuleCompletion",
+        () => Promise.resolve(),
+      );
+      const activeModuleStub = stub(
+        userRepository,
+        "setActiveModule",
+        () => Promise.resolve(),
+      );
+
+      const result = await ModuleService.completeModule(
+        1,
+        "module-1",
+        submissionData,
+      );
+
+      assertEquals(result.status, "COMPLETED");
+      assertExists(result.completed_at);
+      assertEquals(auditStub.calls.length, 1);
+      assertEquals(
+        (auditStub.calls[0].args[1] as Record<string, unknown>).response_count,
+        2,
+      );
+      assertEquals(activeModuleStub.calls[0].args, [1, 3]); // userId, nextModuleId
     });
 
-    it("should store response data on completion", () => {
-      const responseData = {
-        question1: "answer1",
-        question2: true,
-        question3: ["option1", "option2"],
-      };
-
-      const progress = createTestModuleProgress({
+    it("should set active module to null when no more modules", async () => {
+      const testModule = createTestModule({
+        id: 4,
+        name: "module-3",
+        sequence_order: 4,
+      });
+      const completedProgress = createTestModuleProgress({
         status: "COMPLETED",
-        response_data: responseData,
       });
 
-      assertExists(progress.response_data);
-      assertEquals(typeof progress.response_data, "object");
-    });
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(testModule),
+      );
+      stub(moduleRepository, "isModuleAccessible", () => Promise.resolve(true));
+      stub(
+        moduleRepository,
+        "completeModule",
+        () => Promise.resolve(completedProgress),
+      );
+      stub(
+        moduleRepository,
+        "getNextAccessibleModule",
+        () => Promise.resolve(null),
+      );
+      stub(auditRepository, "logModuleCompletion", () => Promise.resolve());
+      const activeModuleStub = stub(
+        userRepository,
+        "setActiveModule",
+        () => Promise.resolve(),
+      );
 
-    it("should advance to next module after completion", () => {
-      const currentModule = createTestModule({
-        name: "module-1",
-        sequence_order: 2,
-      });
-      const nextModule = createTestModule({
-        name: "module-2",
-        sequence_order: 3,
-      });
-
-      assertEquals(nextModule.sequence_order, currentModule.sequence_order + 1);
-    });
-
-    it("should set active_module to null when no more modules", () => {
-      const user = createTestUser({ active_module: 4 });
-      const noMoreModules = null;
-
-      const updatedUser = { ...user, active_module: noMoreModules };
-
-      assertEquals(updatedUser.active_module, null);
-    });
-  });
-
-  describe("Progress Saving", () => {
-    it("should save partial progress without completing", () => {
-      const partialProgress = createTestModuleProgress({
-        status: "IN_PROGRESS",
-        response_data: { question1: "partial_answer" },
-      });
-
-      assertEquals(partialProgress.status, "IN_PROGRESS");
-      assertExists(partialProgress.response_data);
-    });
-
-    it("should auto-start module if not started when saving progress", () => {
-      const notStarted = null;
-      const shouldAutoStart = notStarted === null;
-
-      assertEquals(shouldAutoStart, true);
-    });
-
-    it("should update last_saved timestamp when saving progress", () => {
-      const responseData = {
+      await ModuleService.completeModule(1, "module-3", {
         responses: { q1: "a1" },
-        last_saved: new Date().toISOString(),
-      };
-
-      assertExists(responseData.last_saved);
-    });
-  });
-
-  describe("Navigation State", () => {
-    it("should return current module for user", () => {
-      const currentModule = createTestModule({
-        name: "module-1",
-        sequence_order: 2,
       });
 
-      assertExists(currentModule);
-      assertEquals(currentModule.name, "module-1");
+      assertEquals(activeModuleStub.calls[0].args, [1, null]);
     });
 
-    it("should calculate progress percentage correctly", () => {
-      const totalModules = 5;
-      const completedModules = 2;
-      const progressPercentage = (completedModules / totalModules) * 100;
+    it("should throw when module not found", async () => {
+      stub(moduleRepository, "getModuleByName", () => Promise.resolve(null));
 
-      assertEquals(progressPercentage, 40);
-    });
-
-    it("should list completed modules", () => {
-      const modules = [
-        { name: "consent", status: "COMPLETED" },
-        { name: "module-1", status: "COMPLETED" },
-        { name: "module-2", status: "IN_PROGRESS" },
-        { name: "module-3", status: "NOT_STARTED" },
-      ];
-
-      const completedModules = modules
-        .filter((m) => m.status === "COMPLETED")
-        .map((m) => m.name);
-
-      assertEquals(completedModules.length, 2);
-      assertEquals(completedModules.includes("consent"), true);
-      assertEquals(completedModules.includes("module-1"), true);
-    });
-
-    it("should list available (accessible) modules", () => {
-      const modules = [
-        { name: "consent", accessible: true },
-        { name: "module-1", accessible: true },
-        { name: "module-2", accessible: false },
-      ];
-
-      const availableModules = modules
-        .filter((m) => m.accessible)
-        .map((m) => m.name);
-
-      assertEquals(availableModules.length, 2);
+      await assertRejects(
+        () => ModuleService.completeModule(1, "nonexistent", { responses: {} }),
+        Error,
+        "Module not found",
+      );
     });
   });
 
-  describe("Review Mode", () => {
-    it("should allow review of completed modules", () => {
-      const progress = createTestModuleProgress({ status: "COMPLETED" });
-      const canReview = progress.status === "COMPLETED";
-
-      assertEquals(canReview, true);
-    });
-
-    it("should not allow modification of completed modules", () => {
-      const progress = createTestModuleProgress({ status: "COMPLETED" });
-      const isReadOnly = progress.status === "COMPLETED";
-
-      assertEquals(isReadOnly, true);
-    });
-  });
-
-  describe("User Initialization", () => {
-    it("should start consent module for new users", () => {
-      const consentModule = createTestModule({
-        name: "consent",
-        sequence_order: 1,
+  describe("saveModuleProgress", () => {
+    it("should update existing progress without restarting", async () => {
+      const testModule = createTestModule({ id: 2, name: "module-1" });
+      const existingProgress = createTestModuleProgress({
+        status: "IN_PROGRESS",
+      });
+      const updatedProgress = createTestModuleProgress({
+        status: "IN_PROGRESS",
+        response_data: { q1: "a1" },
       });
 
-      assertEquals(consentModule.name, "consent");
-      assertEquals(consentModule.sequence_order, 1);
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(testModule),
+      );
+      stub(moduleRepository, "isModuleAccessible", () => Promise.resolve(true));
+      stub(
+        moduleRepository,
+        "getUserModuleProgress",
+        () => Promise.resolve(existingProgress),
+      );
+      const startStub = stub(
+        moduleRepository,
+        "startModule",
+        () => Promise.resolve(existingProgress),
+      );
+      const updateStub = stub(
+        moduleRepository,
+        "updateModuleResponse",
+        () => Promise.resolve(updatedProgress),
+      );
+
+      const result = await ModuleService.saveModuleProgress(1, "module-1", {
+        q1: "a1",
+      });
+
+      assertEquals(startStub.calls.length, 0); // Should NOT start again
+      assertEquals(updateStub.calls.length, 1);
+      assertExists(result);
     });
 
-    it("should set consent as initial active module", () => {
-      const newUser = createTestUser({ active_module: null });
+    it("should auto-start module when no progress exists", async () => {
+      const testModule = createTestModule({ id: 2, name: "module-1" });
+      const newProgress = createTestModuleProgress({ status: "IN_PROGRESS" });
+      const updatedProgress = createTestModuleProgress({
+        status: "IN_PROGRESS",
+        response_data: { q1: "a1" },
+      });
+
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(testModule),
+      );
+      stub(moduleRepository, "isModuleAccessible", () => Promise.resolve(true));
+      stub(
+        moduleRepository,
+        "getUserModuleProgress",
+        () => Promise.resolve(null),
+      );
+      const startStub = stub(
+        moduleRepository,
+        "startModule",
+        () => Promise.resolve(newProgress),
+      );
+      stub(
+        moduleRepository,
+        "updateModuleResponse",
+        () => Promise.resolve(updatedProgress),
+      );
+
+      await ModuleService.saveModuleProgress(1, "module-1", { q1: "a1" });
+
+      assertEquals(startStub.calls.length, 1); // Should auto-start
+    });
+
+    it("should throw when module not found", async () => {
+      stub(moduleRepository, "getModuleByName", () => Promise.resolve(null));
+
+      await assertRejects(
+        () => ModuleService.saveModuleProgress(1, "nonexistent", {}),
+        Error,
+        "Module not found",
+      );
+    });
+  });
+
+  describe("getModuleForUser", () => {
+    it("should return module data with progress for active module", async () => {
+      const testModule = createTestModule({ id: 2, name: "module-1" });
+      const progress = createTestModuleProgress({ status: "IN_PROGRESS" });
+
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(testModule),
+      );
+      stub(
+        moduleRepository,
+        "getUserModuleProgress",
+        () => Promise.resolve(progress),
+      );
+      stub(moduleRepository, "isModuleAccessible", () => Promise.resolve(true));
+
+      const result = await ModuleService.getModuleForUser(1, "module-1");
+
+      assertExists(result);
+      assertEquals(result!.module.name, "module-1");
+      assertEquals(result!.progress?.status, "IN_PROGRESS");
+      assertEquals(result!.accessible, true);
+      assertEquals(result!.isCompleted, false);
+      assertEquals(result!.canReview, false);
+    });
+
+    it("should mark completed module as reviewable", async () => {
+      const testModule = createTestModule({ id: 1, name: "consent" });
+      const progress = createTestModuleProgress({ status: "COMPLETED" });
+
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(testModule),
+      );
+      stub(
+        moduleRepository,
+        "getUserModuleProgress",
+        () => Promise.resolve(progress),
+      );
+      stub(moduleRepository, "isModuleAccessible", () => Promise.resolve(true));
+
+      const result = await ModuleService.getModuleForUser(1, "consent");
+
+      assertExists(result);
+      assertEquals(result!.isCompleted, true);
+      assertEquals(result!.canReview, true);
+    });
+
+    it("should return null for non-existent module", async () => {
+      stub(moduleRepository, "getModuleByName", () => Promise.resolve(null));
+
+      const result = await ModuleService.getModuleForUser(1, "nonexistent");
+
+      assertEquals(result, null);
+    });
+  });
+
+  describe("initializeUserModules", () => {
+    it("should start consent module and set it as active", async () => {
       const consentModule = createTestModule({ id: 1, name: "consent" });
+      const progress = createTestModuleProgress({ status: "IN_PROGRESS" });
 
-      const initializedUser = { ...newUser, active_module: consentModule.id };
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(consentModule),
+      );
+      const startStub = stub(
+        moduleRepository,
+        "startModule",
+        () => Promise.resolve(progress),
+      );
+      const activeStub = stub(
+        userRepository,
+        "setActiveModule",
+        () => Promise.resolve(),
+      );
 
-      assertEquals(initializedUser.active_module, 1);
+      await ModuleService.initializeUserModules(1);
+
+      assertEquals(startStub.calls.length, 1);
+      assertEquals(startStub.calls[0].args, [1, 1]); // userId, consentModuleId
+      assertEquals(activeStub.calls.length, 1);
+      assertEquals(activeStub.calls[0].args, [1, 1]); // userId, consentModuleId
+    });
+
+    it("should throw when consent module not found", async () => {
+      stub(moduleRepository, "getModuleByName", () => Promise.resolve(null));
+
+      await assertRejects(
+        () => ModuleService.initializeUserModules(1),
+        Error,
+        "Consent module not found",
+      );
     });
   });
 
-  describe("Audit Logging", () => {
-    it("should log module start events", () => {
-      const auditEvent = {
-        event_type: "MODULE_START",
-        user_id: 1,
-        details: {
-          module_id: 2,
-          module_name: "module-1",
-          sequence_order: 2,
-        },
-      };
+  describe("getCurrentModule", () => {
+    it("should delegate to moduleRepository", async () => {
+      const testModule = createTestModule({ name: "module-1" });
+      const repoStub = stub(
+        moduleRepository,
+        "getCurrentModule",
+        () => Promise.resolve(testModule),
+      );
 
-      assertEquals(auditEvent.event_type, "MODULE_START");
-      assertExists(auditEvent.details.module_id);
+      const result = await ModuleService.getCurrentModule(1);
+
+      assertEquals(result?.name, "module-1");
+      assertEquals(repoStub.calls.length, 1);
+      assertEquals(repoStub.calls[0].args[0], 1);
     });
 
-    it("should log module completion events", () => {
-      const auditEvent = {
-        event_type: "MODULE_COMPLETION",
-        user_id: 1,
-        details: {
-          module_id: 2,
-          module_name: "module-1",
-          response_count: 5,
-        },
-      };
+    it("should return null when no current module", async () => {
+      stub(moduleRepository, "getCurrentModule", () => Promise.resolve(null));
 
-      assertEquals(auditEvent.event_type, "MODULE_COMPLETION");
-      assertExists(auditEvent.details.response_count);
+      const result = await ModuleService.getCurrentModule(1);
+
+      assertEquals(result, null);
     });
+  });
 
-    it("should log access denied events", () => {
-      const auditEvent = {
-        event_type: "MODULE_START",
-        user_id: 1,
-        details: {
-          module_name: "restricted-module",
-          reason: "Previous module not completed",
-          timestamp: new Date().toISOString(),
-        },
+  describe("getUserProgress", () => {
+    it("should delegate to moduleRepository", async () => {
+      const stats = {
+        total_modules: 5,
+        completed_modules: 2,
+        completion_percentage: 40,
       };
+      stub(
+        moduleRepository,
+        "getUserCompletionStats",
+        () => Promise.resolve(stats),
+      );
 
-      assertExists(auditEvent.details.reason);
+      const result = await ModuleService.getUserProgress(1);
+
+      assertEquals(result.completion_percentage, 40);
+      assertEquals(result.total_modules, 5);
+    });
+  });
+
+  describe("getNavigationState", () => {
+    it("should return correct navigation state", async () => {
+      const modules = [
+        {
+          ...createTestModule({ name: "consent" }),
+          user_progress: { status: "COMPLETED" },
+          accessible: true,
+        },
+        {
+          ...createTestModule({ name: "module-1" }),
+          user_progress: { status: "COMPLETED" },
+          accessible: true,
+        },
+        {
+          ...createTestModule({ name: "module-2" }),
+          user_progress: { status: "IN_PROGRESS" },
+          accessible: true,
+        },
+        {
+          ...createTestModule({ name: "module-3" }),
+          user_progress: null,
+          accessible: false,
+        },
+      ];
+      const stats = {
+        completion_percentage: 50,
+        total_modules: 4,
+        completed_modules: 2,
+      };
+      const currentModule = createTestModule({ name: "module-2" });
+      const nextModule = createTestModule({ name: "module-3" });
+
+      stub(
+        moduleRepository,
+        "getModulesWithProgress",
+        () => Promise.resolve(modules),
+      );
+      stub(
+        moduleRepository,
+        "getUserCompletionStats",
+        () => Promise.resolve(stats),
+      );
+      stub(
+        moduleRepository,
+        "getCurrentModule",
+        () => Promise.resolve(currentModule),
+      );
+      stub(
+        moduleRepository,
+        "getNextAccessibleModule",
+        () => Promise.resolve(nextModule),
+      );
+
+      const result = await ModuleService.getNavigationState(1);
+
+      assertEquals(result.currentModule?.name, "module-2");
+      assertEquals(result.completedModules, ["consent", "module-1"]);
+      assertEquals(result.availableModules, [
+        "consent",
+        "module-1",
+        "module-2",
+      ]);
+      assertEquals(result.nextModule?.name, "module-3");
+      assertEquals(result.progressPercentage, 50);
+    });
+  });
+
+  describe("logAccessDenied", () => {
+    it("should create audit entry for access denial", async () => {
+      const testModule = createTestModule({ id: 3, name: "module-2" });
+      stub(
+        moduleRepository,
+        "getModuleByName",
+        () => Promise.resolve(testModule),
+      );
+      const auditStub = stub(
+        auditRepository,
+        "createAudit",
+        () => Promise.resolve(),
+      );
+
+      await ModuleService.logAccessDenied(
+        1,
+        "module-2",
+        "Previous module not completed",
+      );
+
+      assertEquals(auditStub.calls.length, 1);
+      assertEquals(auditStub.calls[0].args[0], "MODULE_START");
+      assertEquals(auditStub.calls[0].args[1], 1);
+      const details = auditStub.calls[0].args[2] as Record<string, unknown>;
+      assertEquals(details.module_id, 3);
+      assertEquals(details.module_name, "module-2");
+      assertEquals(details.reason, "Previous module not completed");
     });
   });
 });

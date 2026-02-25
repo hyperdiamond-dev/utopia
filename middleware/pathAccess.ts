@@ -34,7 +34,7 @@ export const pathAccessMiddleware = createMiddleware(async (c, next) => {
 
   try {
     // Get user record from database
-    const userRecord = await userRepository.findByUuid(user.id);
+    const userRecord = await userRepository.findByUuid(user.uuid);
     if (!userRecord) {
       return c.json({ error: "User not found" }, 404);
     }
@@ -56,7 +56,8 @@ export const pathAccessMiddleware = createMiddleware(async (c, next) => {
       return c.json({
         error: "Path access denied",
         reason: accessResult.reason,
-        message: "Unlock this path via branching rules or complete prerequisites",
+        message:
+          "Unlock this path via branching rules or complete prerequisites",
       }, 403);
     }
 
@@ -114,7 +115,8 @@ export const pathCompletionMiddleware = createMiddleware(async (c, next) => {
     if (pathData.isCompleted) {
       return c.json({
         error: "Path already completed",
-        message: "This path has already been completed and cannot be resubmitted",
+        message:
+          "This path has already been completed and cannot be resubmitted",
       }, 400);
     }
 
@@ -190,7 +192,8 @@ export const pathReviewMiddleware = createMiddleware(async (c, next) => {
     if (!pathData.accessible && !pathData.isCompleted) {
       return c.json({
         error: "Path not accessible",
-        message: "Unlock this path via branching rules or complete prerequisites",
+        message:
+          "Unlock this path via branching rules or complete prerequisites",
       }, 403);
     }
 

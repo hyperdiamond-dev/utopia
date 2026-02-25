@@ -19,8 +19,6 @@ export interface Question {
   id: number;
   question_text: string;
   question_type: QuestionType;
-  module_id: number | null;
-  submodule_id: number | null;
   sequence_order: number;
   is_required: boolean;
   metadata: QuestionMetadata;
@@ -103,16 +101,48 @@ export class QuestionRepository {
   }
 
   /**
+   * Get the module ID associated with a question via junction table
+   */
+  async getModuleIdForQuestion(questionId: number): Promise<number | null> {
+    const result = await sql`
+      SELECT module_id
+      FROM terminal_utopia.question_modules
+      WHERE question_id = ${questionId}
+      LIMIT 1
+    `;
+    return result.length > 0
+      ? (result[0] as { module_id: number }).module_id
+      : null;
+  }
+
+  /**
+   * Get the submodule ID associated with a question via junction table
+   */
+  async getSubmoduleIdForQuestion(
+    questionId: number,
+  ): Promise<number | null> {
+    const result = await sql`
+      SELECT submodule_id
+      FROM terminal_utopia.question_submodules
+      WHERE question_id = ${questionId}
+      LIMIT 1
+    `;
+    return result.length > 0
+      ? (result[0] as { submodule_id: number }).submodule_id
+      : null;
+  }
+
+  /**
    * Get all questions for a module (not including submodule questions)
    */
   async getQuestionsByModuleId(moduleId: number): Promise<Question[]> {
     const result = await sql`
-      SELECT *
-      FROM terminal_utopia.questions
-      WHERE module_id = ${moduleId}
-      AND submodule_id IS NULL
-      AND is_active = true
-      ORDER BY sequence_order ASC
+      SELECT q.*
+      FROM terminal_utopia.questions q
+      INNER JOIN terminal_utopia.question_modules qm ON q.id = qm.question_id
+      WHERE qm.module_id = ${moduleId}
+      AND q.is_active = true
+      ORDER BY qm.sequence_order ASC
     `;
 
     return result as Question[];
@@ -123,11 +153,12 @@ export class QuestionRepository {
    */
   async getQuestionsBySubmoduleId(submoduleId: number): Promise<Question[]> {
     const result = await sql`
-      SELECT *
-      FROM terminal_utopia.questions
-      WHERE submodule_id = ${submoduleId}
-      AND is_active = true
-      ORDER BY sequence_order ASC
+      SELECT q.*
+      FROM terminal_utopia.questions q
+      INNER JOIN terminal_utopia.question_submodules qs ON q.id = qs.question_id
+      WHERE qs.submodule_id = ${submoduleId}
+      AND q.is_active = true
+      ORDER BY qs.sequence_order ASC
     `;
 
     return result as Question[];
@@ -138,14 +169,22 @@ export class QuestionRepository {
    */
   async getAllQuestionsForModule(moduleId: number): Promise<Question[]> {
     const result = await sql`
-      SELECT q.*
+      SELECT q.*, NULL::integer as submodule_seq
       FROM terminal_utopia.questions q
-      LEFT JOIN terminal_utopia.submodules s ON q.submodule_id = s.id
-      WHERE (q.module_id = ${moduleId} OR s.module_id = ${moduleId})
+      INNER JOIN terminal_utopia.question_modules qm ON q.id = qm.question_id
+      WHERE qm.module_id = ${moduleId}
       AND q.is_active = true
-      ORDER BY
-        COALESCE(s.sequence_order, 0) ASC,
-        q.sequence_order ASC
+
+      UNION ALL
+
+      SELECT q.*, s.sequence_order as submodule_seq
+      FROM terminal_utopia.questions q
+      INNER JOIN terminal_utopia.question_submodules qsub ON q.id = qsub.question_id
+      INNER JOIN terminal_utopia.submodules s ON qsub.submodule_id = s.id
+      WHERE s.module_id = ${moduleId}
+      AND q.is_active = true
+
+      ORDER BY submodule_seq ASC NULLS FIRST, sequence_order ASC
     `;
 
     return result as Question[];
@@ -162,8 +201,6 @@ export class QuestionRepository {
       id: number;
       question_text: string;
       question_type: QuestionType;
-      module_id: number | null;
-      submodule_id: number | null;
       sequence_order: number;
       is_required: boolean;
       metadata: QuestionMetadata;
@@ -186,12 +223,12 @@ export class QuestionRepository {
         uqr.created_at as response_created_at,
         uqr.updated_at as response_updated_at
       FROM terminal_utopia.questions q
+      INNER JOIN terminal_utopia.question_modules qm ON q.id = qm.question_id
       LEFT JOIN terminal_utopia.user_question_responses uqr
         ON q.id = uqr.question_id AND uqr.user_id = ${userId}
-      WHERE q.module_id = ${moduleId}
-      AND q.submodule_id IS NULL
+      WHERE qm.module_id = ${moduleId}
       AND q.is_active = true
-      ORDER BY q.sequence_order ASC
+      ORDER BY qm.sequence_order ASC
     `;
 
     return this.transformQuestionsWithResponses(
@@ -211,8 +248,6 @@ export class QuestionRepository {
       id: number;
       question_text: string;
       question_type: QuestionType;
-      module_id: number | null;
-      submodule_id: number | null;
       sequence_order: number;
       is_required: boolean;
       metadata: QuestionMetadata;
@@ -235,11 +270,12 @@ export class QuestionRepository {
         uqr.created_at as response_created_at,
         uqr.updated_at as response_updated_at
       FROM terminal_utopia.questions q
+      INNER JOIN terminal_utopia.question_submodules qs ON q.id = qs.question_id
       LEFT JOIN terminal_utopia.user_question_responses uqr
         ON q.id = uqr.question_id AND uqr.user_id = ${userId}
-      WHERE q.submodule_id = ${submoduleId}
+      WHERE qs.submodule_id = ${submoduleId}
       AND q.is_active = true
-      ORDER BY q.sequence_order ASC
+      ORDER BY qs.sequence_order ASC
     `;
 
     return this.transformQuestionsWithResponses(
@@ -256,8 +292,6 @@ export class QuestionRepository {
       id: number;
       question_text: string;
       question_type: QuestionType;
-      module_id: number | null;
-      submodule_id: number | null;
       sequence_order: number;
       is_required: boolean;
       metadata: QuestionMetadata;
@@ -276,8 +310,6 @@ export class QuestionRepository {
       id: row.id,
       question_text: row.question_text,
       question_type: row.question_type,
-      module_id: row.module_id,
-      submodule_id: row.submodule_id,
       sequence_order: row.sequence_order,
       is_required: row.is_required,
       metadata: row.metadata || {},
@@ -289,8 +321,8 @@ export class QuestionRepository {
           id: row.response_id,
           user_id: userId,
           question_id: row.id,
-          module_id: row.module_id,
-          submodule_id: row.submodule_id,
+          module_id: null,
+          submodule_id: null,
           response_value: row.response_value as ResponseValue,
           answered_at: row.answered_at!,
           created_at: row.response_created_at!,
@@ -331,13 +363,10 @@ export class QuestionRepository {
     const result = await sql`
       SELECT uqr.*
       FROM terminal_utopia.user_question_responses uqr
-      INNER JOIN terminal_utopia.questions q ON uqr.question_id = q.id
+      INNER JOIN terminal_utopia.question_modules qm ON uqr.question_id = qm.question_id
       WHERE uqr.user_id = ${userId}
-      AND (
-        uqr.module_id = ${moduleId}
-        OR q.module_id = ${moduleId}
-      )
-      ORDER BY q.sequence_order ASC
+      AND qm.module_id = ${moduleId}
+      ORDER BY qm.sequence_order ASC
     `;
 
     return result as UserQuestionResponse[];
@@ -353,13 +382,10 @@ export class QuestionRepository {
     const result = await sql`
       SELECT uqr.*
       FROM terminal_utopia.user_question_responses uqr
-      INNER JOIN terminal_utopia.questions q ON uqr.question_id = q.id
+      INNER JOIN terminal_utopia.question_submodules qs ON uqr.question_id = qs.question_id
       WHERE uqr.user_id = ${userId}
-      AND (
-        uqr.submodule_id = ${submoduleId}
-        OR q.submodule_id = ${submoduleId}
-      )
-      ORDER BY q.sequence_order ASC
+      AND qs.submodule_id = ${submoduleId}
+      ORDER BY qs.sequence_order ASC
     `;
 
     return result as UserQuestionResponse[];
@@ -419,8 +445,6 @@ export class QuestionRepository {
   ): Promise<UserQuestionResponse[]> {
     if (responses.length === 0) return [];
 
-    // Use individual upserts for each response
-    // This is simpler and works better with Neon's SQL driver
     const results: UserQuestionResponse[] = [];
 
     for (const response of responses) {
@@ -464,7 +488,6 @@ export class QuestionRepository {
     valid: boolean;
     error?: string;
   } {
-    // Check if required question has a response
     if (
       question.is_required &&
       (responseValue === null || responseValue === undefined)
@@ -472,7 +495,6 @@ export class QuestionRepository {
       return { valid: false, error: "This question is required" };
     }
 
-    // If not required and no response, that's ok
     if (
       !question.is_required &&
       (responseValue === null || responseValue === undefined)
@@ -547,7 +569,6 @@ export class QuestionRepository {
     const validation = question.metadata.validation;
     if (!validation) return { valid: true };
 
-    // Check min length
     if (validation.min_length && responseValue.length < validation.min_length) {
       return {
         valid: false,
@@ -556,7 +577,6 @@ export class QuestionRepository {
       };
     }
 
-    // Check max length
     if (validation.max_length && responseValue.length > validation.max_length) {
       return {
         valid: false,
@@ -565,7 +585,6 @@ export class QuestionRepository {
       };
     }
 
-    // Check regex pattern
     if (validation.pattern) {
       const regex = new RegExp(validation.pattern);
       if (!regex.test(responseValue)) {
@@ -580,29 +599,36 @@ export class QuestionRepository {
   }
 
   /**
-   * Check if all required questions in a module are answered
+   * Check if all required questions in a module or submodule are answered
    */
   async areAllRequiredQuestionsAnswered(
     userId: number,
     moduleId: number,
     submoduleId?: number,
   ): Promise<boolean> {
-    const result = await sql`
-      SELECT COUNT(*) as unanswered_count
-      FROM terminal_utopia.questions q
-      LEFT JOIN terminal_utopia.user_question_responses uqr
-        ON q.id = uqr.question_id AND uqr.user_id = ${userId}
-      WHERE q.is_required = true
-      AND q.is_active = true
-      AND uqr.id IS NULL
-      AND (
-        ${
-      submoduleId
-        ? sql`q.submodule_id = ${submoduleId}`
-        : sql`q.module_id = ${moduleId} AND q.submodule_id IS NULL`
-    }
-      )
-    `;
+    const result = submoduleId
+      ? await sql`
+        SELECT COUNT(*) as unanswered_count
+        FROM terminal_utopia.questions q
+        INNER JOIN terminal_utopia.question_submodules qs ON q.id = qs.question_id
+        LEFT JOIN terminal_utopia.user_question_responses uqr
+          ON q.id = uqr.question_id AND uqr.user_id = ${userId}
+        WHERE qs.submodule_id = ${submoduleId}
+        AND q.is_required = true
+        AND q.is_active = true
+        AND uqr.id IS NULL
+      `
+      : await sql`
+        SELECT COUNT(*) as unanswered_count
+        FROM terminal_utopia.questions q
+        INNER JOIN terminal_utopia.question_modules qm ON q.id = qm.question_id
+        LEFT JOIN terminal_utopia.user_question_responses uqr
+          ON q.id = uqr.question_id AND uqr.user_id = ${userId}
+        WHERE qm.module_id = ${moduleId}
+        AND q.is_required = true
+        AND q.is_active = true
+        AND uqr.id IS NULL
+      `;
 
     return parseInt(
       (result[0] as { unanswered_count: string }).unanswered_count,
@@ -615,17 +641,17 @@ export class QuestionRepository {
   // ==========================================================================
 
   /**
-   * Create a new question
+   * Create a new question and link it to a module or submodule via junction table
    */
   async createQuestion(
     data: Omit<Question, "id" | "created_at" | "updated_at" | "is_active">,
+    moduleId?: number,
+    submoduleId?: number,
   ): Promise<Question> {
     const result = await sql`
       INSERT INTO terminal_utopia.questions (
         question_text,
         question_type,
-        module_id,
-        submodule_id,
         sequence_order,
         is_required,
         metadata
@@ -633,8 +659,6 @@ export class QuestionRepository {
       VALUES (
         ${data.question_text},
         ${data.question_type},
-        ${data.module_id},
-        ${data.submodule_id},
         ${data.sequence_order},
         ${data.is_required},
         ${JSON.stringify(data.metadata)}
@@ -642,7 +666,22 @@ export class QuestionRepository {
       RETURNING *
     `;
 
-    return result[0] as Question;
+    const question = result[0] as Question;
+
+    if (moduleId) {
+      await sql`
+        INSERT INTO terminal_utopia.question_modules (question_id, module_id, sequence_order)
+        VALUES (${question.id}, ${moduleId}, ${data.sequence_order})
+      `;
+    }
+    if (submoduleId) {
+      await sql`
+        INSERT INTO terminal_utopia.question_submodules (question_id, submodule_id, sequence_order)
+        VALUES (${question.id}, ${submoduleId}, ${data.sequence_order})
+      `;
+    }
+
+    return question;
   }
 
   /**
@@ -656,7 +695,6 @@ export class QuestionRepository {
       return this.getQuestionById(questionId);
     }
 
-    // Build update object with JSON stringified metadata
     const updateData: Record<string, unknown> = {};
 
     if (data.question_text !== undefined) {
@@ -664,12 +702,6 @@ export class QuestionRepository {
     }
     if (data.question_type !== undefined) {
       updateData.question_type = data.question_type;
-    }
-    if (data.module_id !== undefined) {
-      updateData.module_id = data.module_id;
-    }
-    if (data.submodule_id !== undefined) {
-      updateData.submodule_id = data.submodule_id;
     }
     if (data.sequence_order !== undefined) {
       updateData.sequence_order = data.sequence_order;

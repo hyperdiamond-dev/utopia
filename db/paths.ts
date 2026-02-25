@@ -161,7 +161,7 @@ export class PathRepository {
       sequence_order: number;
       is_common: boolean;
       is_active: boolean;
-    }>
+    }>,
   ): Promise<Path | null> {
     const updates: string[] = [];
     const values: unknown[] = [];
@@ -206,7 +206,11 @@ export class PathRepository {
         name = COALESCE(${data.name}, name),
         title = COALESCE(${data.title}, title),
         description = COALESCE(${data.description}, description),
-        parent_path_id = ${data.parent_path_id !== undefined ? data.parent_path_id : sql`parent_path_id`},
+        parent_path_id = ${
+      data.parent_path_id !== undefined
+        ? data.parent_path_id
+        : sql`parent_path_id`
+    },
         sequence_order = COALESCE(${data.sequence_order}, sequence_order),
         is_common = COALESCE(${data.is_common}, is_common),
         is_active = COALESCE(${data.is_active}, is_active),
@@ -267,7 +271,10 @@ export class PathRepository {
       ORDER BY pm.sequence_order ASC
     `;
 
-    const modules = (result as (Module & { path_sequence_order: number; is_required: boolean })[]).map((m) => ({
+    const modules = (result as (Module & {
+      path_sequence_order: number;
+      is_required: boolean;
+    })[]).map((m) => ({
       ...m,
       sequence_order: m.path_sequence_order,
     }));
@@ -283,7 +290,7 @@ export class PathRepository {
     pathId: number,
     moduleId: number,
     sequenceOrder?: number,
-    isRequired = true
+    isRequired = true,
   ): Promise<PathModule> {
     // If no sequence order provided, append to end
     if (sequenceOrder === undefined) {
@@ -306,7 +313,10 @@ export class PathRepository {
   }
 
   // Remove module from path
-  async removeModuleFromPath(pathId: number, moduleId: number): Promise<boolean> {
+  async removeModuleFromPath(
+    pathId: number,
+    moduleId: number,
+  ): Promise<boolean> {
     const result = await sql`
       DELETE FROM terminal_utopia.path_modules
       WHERE path_id = ${pathId} AND module_id = ${moduleId}
@@ -319,7 +329,7 @@ export class PathRepository {
   async updatePathModuleSequence(
     pathId: number,
     moduleId: number,
-    sequenceOrder: number
+    sequenceOrder: number,
   ): Promise<PathModule | null> {
     const result = await sql`
       UPDATE terminal_utopia.path_modules
@@ -360,7 +370,7 @@ export class PathRepository {
   async addQuestionToPath(
     questionId: number,
     pathId: number,
-    sequenceOrder?: number
+    sequenceOrder?: number,
   ): Promise<QuestionPath> {
     if (sequenceOrder === undefined) {
       const maxSeq = await sql`
@@ -382,7 +392,10 @@ export class PathRepository {
   }
 
   // Remove question from path
-  async removeQuestionFromPath(questionId: number, pathId: number): Promise<boolean> {
+  async removeQuestionFromPath(
+    questionId: number,
+    pathId: number,
+  ): Promise<boolean> {
     const result = await sql`
       DELETE FROM terminal_utopia.question_paths
       WHERE question_id = ${questionId} AND path_id = ${pathId}
@@ -398,7 +411,7 @@ export class PathRepository {
   // Get user's progress for a specific path
   async getUserPathProgress(
     userId: number,
-    pathId: number
+    pathId: number,
   ): Promise<UserPathProgress | null> {
     const result = await sql`
       SELECT * FROM terminal_utopia.user_path_progress
@@ -461,7 +474,10 @@ export class PathRepository {
 
     // If path has a parent, check if parent is accessible and in progress/completed
     if (path.parent_path_id) {
-      const parentProgress = await this.getUserPathProgress(userId, path.parent_path_id);
+      const parentProgress = await this.getUserPathProgress(
+        userId,
+        path.parent_path_id,
+      );
       if (!parentProgress || parentProgress.status === "NOT_STARTED") {
         return false;
       }
@@ -474,14 +490,16 @@ export class PathRepository {
   async startPath(
     userId: number,
     pathId: number,
-    unlockedByRuleId?: number
+    unlockedByRuleId?: number,
   ): Promise<UserPathProgress> {
     const accessible = await this.isPathAccessible(userId, pathId);
     const path = await this.getPathById(pathId);
 
     // Allow starting common paths even if not explicitly accessible
     if (!accessible && !path?.is_common) {
-      throw new Error("Path not accessible - unlock via branching rules or complete prerequisites");
+      throw new Error(
+        "Path not accessible - unlock via branching rules or complete prerequisites",
+      );
     }
 
     const result = await sql`
@@ -501,23 +519,33 @@ export class PathRepository {
     `;
 
     if (result.length === 0) {
-      throw new Error("Path is read-only - completed paths cannot be restarted");
+      throw new Error(
+        "Path is read-only - completed paths cannot be restarted",
+      );
     }
 
     return result[0] as UserPathProgress;
   }
 
   // Complete a path
-  async completePath(userId: number, pathId: number): Promise<UserPathProgress> {
+  async completePath(
+    userId: number,
+    pathId: number,
+  ): Promise<UserPathProgress> {
     const accessible = await this.isPathAccessible(userId, pathId);
     if (!accessible) {
       throw new Error("Path not accessible");
     }
 
     // Check if all required modules in path are completed
-    const allModulesComplete = await this.areAllRequiredModulesCompleted(userId, pathId);
+    const allModulesComplete = await this.areAllRequiredModulesCompleted(
+      userId,
+      pathId,
+    );
     if (!allModulesComplete) {
-      throw new Error("Cannot complete path - all required modules must be completed first");
+      throw new Error(
+        "Cannot complete path - all required modules must be completed first",
+      );
     }
 
     const result = await sql`
@@ -540,7 +568,7 @@ export class PathRepository {
   // Check if all required modules in a path are completed
   async areAllRequiredModulesCompleted(
     userId: number,
-    pathId: number
+    pathId: number,
   ): Promise<boolean> {
     const result = await sql`
       SELECT COUNT(*) as incomplete_count
@@ -562,7 +590,7 @@ export class PathRepository {
   async unlockPath(
     userId: number,
     pathId: number,
-    unlockedByRuleId: number
+    unlockedByRuleId: number,
   ): Promise<UserPathProgress> {
     const result = await sql`
       INSERT INTO terminal_utopia.user_path_progress (
@@ -643,7 +671,9 @@ export class PathRepository {
       total_paths: total,
       completed_paths: completed,
       in_progress_paths: inProgress,
-      completion_percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
+      completion_percentage: total > 0
+        ? Math.round((completed / total) * 100)
+        : 0,
     };
   }
 }
