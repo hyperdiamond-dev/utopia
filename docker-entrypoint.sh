@@ -37,9 +37,14 @@ deno run --allow-net --allow-read --allow-env db/init.ts migrate
 
 echo ""
 echo "✅ Migrations complete!"
-echo ""
-echo "🌱 Seeding database with test data..."
-deno run --allow-net --allow-read --allow-env db/seed.ts
+if [ "${SEED_DATABASE}" = "true" ]; then
+  echo ""
+  echo "🌱 Seeding database with test data..."
+  deno run --allow-net --allow-read --allow-env db/seed.ts
+else
+  echo ""
+  echo "⏭️  Skipping database seed (SEED_DATABASE is not 'true')"
+fi
 
 echo ""
 echo "🚀 Starting application server..."

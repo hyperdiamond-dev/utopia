@@ -21,7 +21,23 @@ const requireAdminSecret: Parameters<typeof admin.use>[1] = async (c, next) => {
     return c.json({ error: "Server misconfiguration" }, 500);
   }
 
-  if (!secret || secret !== expected) {
+  if (!secret) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
+  // Constant-time comparison to prevent timing attacks
+  const encoder = new TextEncoder();
+  const a = encoder.encode(secret);
+  const b = encoder.encode(expected);
+  if (a.byteLength !== b.byteLength) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  // Use constant-time XOR comparison
+  let mismatch = 0;
+  for (let i = 0; i < a.byteLength; i++) {
+    mismatch |= a[i] ^ b[i];
+  }
+  if (mismatch !== 0) {
     return c.json({ error: "Forbidden" }, 403);
   }
 

@@ -21,6 +21,23 @@ import { uploads } from "./routes/upload.ts";
 import { content } from "./routes/content.ts";
 import { admin } from "./routes/admin.ts";
 
+// Validate required environment variables at startup
+const REQUIRED_ENV_VARS = [
+  "DATABASE_URL",
+  "JWT_SECRET",
+  "FIREBASE_PROJECT_ID",
+  "FIREBASE_CLIENT_EMAIL",
+  "FIREBASE_PRIVATE_KEY",
+  "ADMIN_SECRET",
+];
+
+for (const varName of REQUIRED_ENV_VARS) {
+  if (!Deno.env.get(varName)) {
+    console.error(`FATAL: Required environment variable ${varName} is not set`);
+    Deno.exit(1);
+  }
+}
+
 interface AppContext extends Env {
   Variables: {
     user?: { uuid: string; id?: string; name: string };
@@ -51,7 +68,7 @@ app.use("/api/auth/create-anonymous", strictRateLimit);
 app.use(
   "*",
   cors({
-    origin: Deno.env.get("ALLOWED_ORIGINS")?.split(",") ||
+    origin: Deno.env.get("ALLOWED_ORIGINS")?.split(",").map((s) => s.trim()) ||
       ["http://localhost:3000"],
     credentials: true,
   }),
