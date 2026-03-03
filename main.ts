@@ -19,6 +19,7 @@ import submodules from "./routes/submodules.ts";
 import questions from "./routes/questions.ts";
 import { uploads } from "./routes/upload.ts";
 import { content } from "./routes/content.ts";
+import { admin } from "./routes/admin.ts";
 
 interface AppContext extends Env {
   Variables: {
@@ -79,6 +80,9 @@ app.route("/api/upload", uploads);
 
 // Content routes (media content for modules/submodules)
 app.route("/api/content", content);
+
+// Admin routes (service-to-service for levelzero dashboard)
+app.route("/api/admin", admin);
 
 // Protected routes example
 app.get("/api/profile", authMiddleware, (c) => {
