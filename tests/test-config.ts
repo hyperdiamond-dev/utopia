@@ -165,6 +165,7 @@ export function createTestModule(
     is_active: true,
     requires_all_submodules: false,
     allows_branching: false,
+    style_theme: null,
     created_at: new Date(),
     updated_at: new Date(),
     ...overrides,
