@@ -37,6 +37,7 @@ modules.get("/list", async (c) => {
         title: module.title,
         description: module.description,
         sequence_order: module.sequence_order,
+        style_theme: module.style_theme,
       })),
     });
   } catch (error) {
@@ -155,6 +156,7 @@ modules.get(
           title: moduleData.module.title,
           description: moduleData.module.description,
           sequence_order: moduleData.module.sequence_order,
+          style_theme: moduleData.module.style_theme,
         },
         progress: {
           status: moduleData.progress?.status || "NOT_STARTED",
