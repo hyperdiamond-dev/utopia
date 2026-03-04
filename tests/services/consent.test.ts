@@ -172,8 +172,7 @@ describe("ConsentService", () => {
       );
 
       await assertRejects(
-        () =>
-          ConsentService.submitConsent(1, { responses: { agreed: true } }),
+        () => ConsentService.submitConsent(1, { responses: { agreed: true } }),
         Error,
         "Consent module not found",
       );
@@ -192,8 +191,7 @@ describe("ConsentService", () => {
       );
 
       await assertRejects(
-        () =>
-          ConsentService.submitConsent(1, { responses: { agreed: true } }),
+        () => ConsentService.submitConsent(1, { responses: { agreed: true } }),
         Error,
         "No active consent version available",
       );
@@ -276,8 +274,7 @@ describe("ConsentService", () => {
         }));
 
       await assertRejects(
-        () =>
-          ConsentService.submitConsent(1, { responses: { agreed: true } }),
+        () => ConsentService.submitConsent(1, { responses: { agreed: true } }),
         Error,
         "User has already consented",
       );
@@ -314,8 +311,7 @@ describe("ConsentService", () => {
         }));
 
       await assertRejects(
-        () =>
-          ConsentService.submitConsent(1, { responses: { agreed: true } }),
+        () => ConsentService.submitConsent(1, { responses: { agreed: true } }),
         Error,
         "Consent module is already completed",
       );
