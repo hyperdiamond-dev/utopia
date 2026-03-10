@@ -16,6 +16,7 @@ export {
   ModuleContentRepository,
   moduleContentRepository,
 } from "./moduleContent.ts";
+export { ThemeRepository, themeRepository } from "./themes.ts";
 
 // Types
 export type { Audit, AuditDetails, EventType } from "./audits.ts";
@@ -46,6 +47,7 @@ export type {
   CreateModuleContentData,
   ModuleContent,
 } from "./moduleContent.ts";
+export type { Theme } from "./themes.ts";
 
 // Migration runner
 export { MigrationRunner, migrationRunner } from "./migrationRunner.ts";

@@ -20,6 +20,7 @@ import questions from "./routes/questions.ts";
 import { uploads } from "./routes/upload.ts";
 import { content } from "./routes/content.ts";
 import { admin } from "./routes/admin.ts";
+import { themes } from "./routes/themes.ts";
 
 // Validate required environment variables at startup
 const REQUIRED_ENV_VARS = [
@@ -100,6 +101,9 @@ app.route("/api/content", content);
 
 // Admin routes (service-to-service for levelzero dashboard)
 app.route("/api/admin", admin);
+
+// Theme routes (public - consumed by terminal for rendering)
+app.route("/api/themes", themes);
 
 // Protected routes example
 app.get("/api/profile", authMiddleware, (c) => {

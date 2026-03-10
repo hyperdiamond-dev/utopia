@@ -2,13 +2,6 @@ import { sql } from "./connection.ts";
 
 export type ModuleStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
 
-export type StyleTheme =
-  | "vhs"
-  | "poolrooms"
-  | "backrooms_yellow"
-  | "void"
-  | "redrooms";
-
 export interface Module {
   id: number;
   name: string;
@@ -18,7 +11,7 @@ export interface Module {
   is_active: boolean;
   requires_all_submodules: boolean;
   allows_branching: boolean;
-  style_theme: StyleTheme | null;
+  style_theme: string | null;
   created_at: Date;
   updated_at: Date;
 }
