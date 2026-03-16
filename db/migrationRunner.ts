@@ -171,7 +171,7 @@ export class MigrationRunner {
       }
 
       try {
-        await sql.unsafe(stmt);
+        await sql.query(stmt, []);
       } catch (error) {
         const preview = stmt.substring(0, 80).replace(/\n/g, " ");
         console.error(`   ❌ Statement ${i + 1} failed: ${preview}...`);
