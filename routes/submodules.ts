@@ -16,6 +16,7 @@ import {
 } from "../middleware/submoduleAccess.ts";
 import { SubmoduleService } from "../services/submoduleService.ts";
 import { QuestionService } from "../services/questionService.ts";
+import { moduleContentRepository } from "../db/moduleContent.ts";
 
 const submodules = new Hono<SubmoduleContext>();
 
@@ -122,11 +123,46 @@ submodules.get(
         return c.json({ error: "Submodule not found" }, 404);
       }
 
-      // Get questions for this submodule
-      const questions = await QuestionService.getQuestionsForSubmodule(
-        userRecord.id,
-        submoduleData.id,
-      );
+      // Get questions and content for this submodule
+      const [questions, contentItems] = await Promise.all([
+        QuestionService.getQuestionsForSubmodule(
+          userRecord.id,
+          submoduleData.id,
+        ),
+        moduleContentRepository.getContentBySubmoduleId(submoduleData.id),
+      ]);
+
+      // Build unified timeline sorted by sequence_order
+      const timeline = [
+        ...contentItems.map((c) => ({
+          type: "content" as const,
+          id: c.id,
+          sequence_order: c.sequence_order,
+          content_type: c.content_type,
+          title: c.title,
+          description: c.description,
+          url: c.url,
+          thumbnail_url: c.thumbnail_url,
+          duration_seconds: c.duration_seconds,
+          is_external: c.is_external,
+          metadata: c.metadata,
+        })),
+        ...questions.map((q) => ({
+          type: "question" as const,
+          id: q.id,
+          sequence_order: q.sequence_order,
+          question_text: q.question_text,
+          question_type: q.question_type,
+          is_required: q.is_required,
+          metadata: q.metadata,
+          user_response: q.user_response
+            ? {
+              response_value: q.user_response.response_value,
+              answered_at: q.user_response.answered_at,
+            }
+            : null,
+        })),
+      ].sort((a, b) => a.sequence_order - b.sequence_order);
 
       return c.json({
         submodule: {
@@ -145,6 +181,7 @@ submodules.get(
             completed_at: submoduleData.user_progress.completed_at,
           }
           : null,
+        timeline,
         questions: questions.map((q) => ({
           id: q.id,
           question_text: q.question_text,
