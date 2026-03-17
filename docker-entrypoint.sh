@@ -6,7 +6,7 @@ echo ""
 
 # Wait for database to be ready (additional check beyond healthcheck)
 echo "⏳ Waiting for database connection..."
-until deno run --allow-net --allow-env - <<'EOF'
+until deno run --allow-net --allow-read --allow-env - <<'EOF'
 import "@std/dotenv/load";
 
 const dbUrl = Deno.env.get("DATABASE_URL");
