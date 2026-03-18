@@ -10,7 +10,6 @@ export {
 } from "./consentVersions.ts";
 export { UserRepository, userRepository } from "./users.ts";
 export { ModuleRepository, moduleRepository } from "./modules.ts";
-export { PathRepository, pathRepository } from "./paths.ts";
 export { FileUploadRepository, fileUploadRepository } from "./fileUploads.ts";
 export {
   ModuleContentRepository,
@@ -32,15 +31,6 @@ export type {
   ModuleWithProgress,
   UserModuleProgress,
 } from "./modules.ts";
-export type {
-  Path,
-  PathModule,
-  PathStatus,
-  PathWithModules,
-  PathWithProgress,
-  QuestionPath,
-  UserPathProgress,
-} from "./paths.ts";
 export type { CreateFileUploadData, FileUpload } from "./fileUploads.ts";
 export type {
   ContentType,
